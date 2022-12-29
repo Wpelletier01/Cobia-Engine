@@ -1,14 +1,17 @@
 #![allow(dead_code)]
 
 use crate::define::{CRELEASE,FMIN_AS_SECONDS,FHOUR_AS_SECONDS};
-use super::apps_state::get_prog_elapsed_time;
-
+use super::application::get_prog_elapsed_time;
 
 use std::sync::Mutex;
 use std::time::Duration;
+use std::env;
 
 use colored::{Colorize,ColoredString};
 
+//
+//
+// TODO: add function to write the logs to a file  
 //
 //
 // ------------------------------------------------------------------------------------------------
@@ -63,8 +66,8 @@ pub(crate) struct LogSystem {
 //
 impl LogSystem {
     //
-    // Initialize the log subsystem
-    pub(crate) fn init(&mut self) { 
+    /// Initialize the log subsystem
+    pub(crate) fn initialize(&mut self) { 
         //
         // they are all enable by default
         //
@@ -76,8 +79,9 @@ impl LogSystem {
 
         }
         //
+        self.init = true;
         // add the initialize log
-        self.push_log(Level::INFO,"START");
+        crate::CTRACE!("Start the log subsystem");
         //
         //    
     }
@@ -91,7 +95,13 @@ impl LogSystem {
     /// 
     fn push_log(&mut self,level: Level,msg: &str) { 
         //
-        
+        // check to make sure that the log subsystem is initialized
+        if !self.is_init(){
+            // TODO: found a better solution because the log subsystem
+            //       should not make the application crash
+            panic!("try to add a log but the log subsystem is not initialized");
+            //
+        }
         //
         // check if the level is enabled and then pass it to the queue
         match level {
@@ -142,11 +152,64 @@ impl LogSystem {
             //
         }
         //
+        self.print();
+        //
+    }
+    //
+    /// wrapper for the macro println! but only for the
+    /// log message this function will probably be unable to be used by default
+    fn print(&self) { 
+        //
+        println!("{}", match self.queue.content.last(){
+
+            Some(v) => v.as_string(),
+            None => "".to_string(),
+
+        }); 
+        //
     }
     //
     /// Check if the sub system logging have been initialize
     fn is_init(&self) -> bool { self.init }
     //
+    //
+}
+//
+//
+/// Drop the log system
+pub fn end() {
+    //
+    match LOG_SUBSYSTEM.lock() {
+
+        Ok(sys) => drop(sys),
+        Err(err) => {
+
+            // TODO: found solution to this situation
+            println!("unable to destroy log system because: {}",err.to_string())
+
+        }
+
+    }
+    
+
+}
+//
+//
+/// Initialize the log subsystem 
+pub fn init() {
+    //
+    match LOG_SUBSYSTEM.lock() {
+        
+        Ok(mut sys) => sys.initialize(),
+        
+        Err(err) => {
+
+            // TODO: found solution to this situation
+            println!("unable to destroy log system because: {}",err.to_string())
+
+        }
+        
+    }
     //
 }
 //
@@ -162,7 +225,7 @@ impl LogSystem {
 /// * level - the type of log
 /// * message - what the log says
 /// 
-fn fmt_log(level: Level, message: String) -> String{
+pub(crate) fn fmt_log(level: Level, message: String) -> String{
     //
     // level represent the index in the CLEVEL_STRING
     // " {TIME} {TYPE} {MESSAGE}"
@@ -271,6 +334,8 @@ impl LogQueue {
         self.content.push(log);
         //
     }
+    //
+    //
 }
 //
 //
@@ -327,7 +392,7 @@ impl Log{
         //
         //
         // add the header to the message  
-        let mut msg =  fmt_log(level,fmt_msg);
+        let mut msg = fmt_log(level,fmt_msg);
         //
         // check if the len of the message is bigger than the max allowed
         if msg.len() > LOG_BUFFER_SIZE - 1 {
@@ -340,10 +405,6 @@ impl Log{
         //
         //
     }
-    //
-    /// wrapper for the macro println! butt only for the
-    /// log message this function will probably be unable to be used by default
-    fn print(&self) { println!("{}", self.content) }
     //
     /// return the log as a string
     pub fn as_string(&self) -> String { self.content.to_string() }
@@ -618,14 +679,13 @@ macro_rules! CTRACE {
     //
     ($fmt_string:expr) => {
 
-        use crate::core::logs::{push_log,validate_msg,Level::CTRACE};
+        use crate::core::logs::{push_log,Level::TRACE};
 
         push_log($fmt_string,TRACE);
 
     };
     //
     ($fmt_string:expr, $( $arg:expr ),*) => {
-
 
         use crate::core::logs::{push_log,validate_msg,Level::CTRACE};
 

@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+
 lazy_static =   "1.4.0"
 colored =       "2"
 thiserror =     "1.0.38"
+gl =            "0.14.0"
+nalgebra-glm =  "0.17.0"
