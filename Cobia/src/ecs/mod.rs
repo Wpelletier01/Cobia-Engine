@@ -1,14 +1,32 @@
 #[allow(dead_code)]
 
-enum CType {
+pub mod image;
 
-    IMAGE 
 
+use thiserror::Error;
+use std::sync::atomic::{AtomicU32,Ordering};
+
+
+static COMPONENT_COUNTER: AtomicU32 = AtomicU32::new(0);
+
+
+pub fn get_next_id() -> u32 {
+
+    let id = COMPONENT_COUNTER.load(Ordering::Relaxed);
+
+    COMPONENT_COUNTER.store(id + 1,Ordering::Release);
+
+    id 
 
 }
 
+enum CType {
 
+    IMAGE,
+    TEXTURE
 
+}
+//
 trait Component {
     //
     /// get th id of the component 
@@ -21,51 +39,13 @@ trait Component {
 }
 //
 //
-// ------------------------------------------------------------------------------------------------
-// IMAGE
-// 
-//
-pub trait ImageTrait<T> {
-    // 
-    /// returns the widht of the image
-    fn get_width(&self) -> u16;
-    //
-    /// return the height of the image
-    fn get_height(&self) -> u16;
-    //
-    // returns a flattened array of pixels
-    fn get_data(&self) -> &[T];
-    //
+
+#[derive(Debug, Error)]
+pub enum EComponent {
+
+    #[error("Unable to load image file {0} because {1}")]
+    LOAD_IMAGE(String, String)
+
 
 }
-//
-//
-/// Lowest representation of an image in this engine
-pub(crate) struct RgbImage<T> {
-
-    id:         u32,
-    width:      u16,
-    height:     u16,
-    data:       [T], // The generic represent the bitrate
-    
-}
-//
-impl<T> Component for RgbImage<T> { 
-
-    fn get_id(&self) -> u32 { self.id }
-
-    fn get_type(&self) -> CType { CType::IMAGE } 
-
-}
-//
-impl<T> ImageTrait<T> for RgbImage<T> {
-    
-    fn get_height(&self) -> u16 { self.width }
-
-    fn get_width(&self) -> u16 { self.height }
-
-    fn get_data(&self) -> &[T] { &self.data }
-
-}
-//
 

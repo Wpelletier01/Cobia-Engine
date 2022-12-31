@@ -587,7 +587,7 @@ macro_rules! CERROR {
         //
         use crate::core::logs::{Level::ERROR,push_log};
    
-        push_log($fmt_string,Level::ERROR);
+        push_log($fmt_string,ERROR);
 
 
     };
@@ -609,7 +609,7 @@ macro_rules! CWARN {
     //
     ($fmt_string:expr) => {
 
-        use crate::Core::logs::{push_log,Level::WARN};
+        use crate::core::logs::{push_log,Level::WARN};
 
         push_log($fmt_string,WARN);
 
@@ -618,7 +618,7 @@ macro_rules! CWARN {
     //
     ($fmt_string:expr, $( $arg:expr ),*) => {
 
-        use crate::Core::logger::{send_log,validate_msg,Level::WARN};
+        use crate::core::logs::{validate_msg,Level::WARN};
 
         push_log(validate_msg($fmt_string, &[$($arg),*]).as_str(),WARN);
 

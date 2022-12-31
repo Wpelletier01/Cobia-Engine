@@ -10,5 +10,4 @@ colored =       "2"
 thiserror =     "1.0.38"
 gl =            "0.14.0"
 nalgebra-glm =  "0.17.0"
-image =         "0.24.5"
-
+png =           "0.17.7"

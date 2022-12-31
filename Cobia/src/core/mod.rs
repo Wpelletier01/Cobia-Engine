@@ -2,7 +2,7 @@
 
 pub(crate) mod logs;
 pub(crate) mod application;
-
+pub(crate) mod io; 
 
 
 #[cfg(test)]
