@@ -229,7 +229,7 @@ impl ImageTrait<u16> for Rgb16Image {
 // ------------------------------------------------------------------------------------------------
 // RGB32 image
 //
-/// Lowest representation of an rgb16 image in this engine
+/// Lowest representation of an rgb32 image in this engine
 pub(crate) struct Rgb32Image {
 
     id:         u32,
@@ -272,7 +272,7 @@ pub(crate) struct Rgba8Image {
     src:    String,
     width:  u16,
     height: u16,
-    data:   Vec<u8>, // The generic represent the bitrate
+    data:   Vec<u8>, 
 
 }
 //
@@ -308,7 +308,7 @@ pub(crate) struct Rgba16Image {
     src:    String,
     width:  u16,
     height: u16,
-    data:   Vec<u16>, // The generic represent the bitrate
+    data:   Vec<u16>,
 
 }
 //
@@ -337,14 +337,14 @@ impl ImageTrait<u16> for Rgba16Image {
 // RGBA32 image
 //
 //
-/// Lowest representation of an rgba16 image in this engine
+/// Lowest representation of an rgba32 image in this engine
 pub(crate) struct Rgba32Image {
 
     id:     u32,
     src:    String,
     width:  u16,
     height: u16,
-    data:   Vec<u32>, // The generic represent the bitrate
+    data:   Vec<u32>, 
 
 }
 //
