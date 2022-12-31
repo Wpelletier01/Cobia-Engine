@@ -8,10 +8,11 @@ pub mod renderer;
 pub(crate) mod core;
 
 
+use thiserror::Error;
+use std::convert::AsRef;
 
 
-
-
+// TODO: make error accepting more generic types
 
 
 #[cfg(test)]
@@ -26,31 +27,21 @@ mod quick_test {
     #[test]
     fn tmain() {
 
-        use std::fs::File;
 
-        let t = get_relative_path("/data/test/test_image.png");
-
-        // The decoder is a build for reader and can be used to set various decoding options
-        // via `Transformations`. The default output transformation is `Transformations::IDENTITY`.
-        let decoder = png::Decoder::new(File::open(t).unwrap());
-        let mut reader = decoder.read_info().unwrap();
-        // Allocate the output buffer.
-        let mut buf = vec![0; reader.output_buffer_size()];
-        // Read the next frame. An APNG might contain multiple frames.
-        let info = reader.next_frame(&mut buf).unwrap();
-        // Grab the bytes of the image.
-        let bytes = &buf[..info.buffer_size()];
-        // Inspect more details of the last read frame.
-        let in_animation = reader.info().frame_control.is_some();
-
-        
-     
-        println!("{:?}",info);
-
-
-        assert!(in_animation);
 
     }
+
+
+
+}
+
+
+/// All the general error tha can be thrown at not only one module
+#[derive(Debug,Error)] 
+pub enum ECobia {
+
+    #[error("Can't convert {from} to {to} while accessing {access}")]
+    ConversionError{ from: String, to: String, access: String },
 
 
 
