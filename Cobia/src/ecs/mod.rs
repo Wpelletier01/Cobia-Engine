@@ -5,10 +5,10 @@ pub mod types;
 
 pub mod loader;
 
-use types::{Component,CType};
 
+use types::Component;
 use thiserror::Error;
-use std::sync::{atomic::{AtomicU32,Ordering}, Mutex};
+
 
 
 
@@ -26,21 +26,10 @@ pub enum EComponent {
     SYS_ACCESS(String),
 
     #[error("No component have the id {0}")]
-    BAD_ID(u32)
+    BAD_ID(u32),
 
-}
-//
-//
-// ------------------------------------------------------------------------------------------------
-// Define
-//
-//
-static COMPONENT_ID_COUNTER: AtomicU32 = AtomicU32::new(0);
-//
-//
-lazy_static::lazy_static! {
-
-    static ref COMPONENT_SYS:Mutex<ComponentSystem> = Mutex::new(ComponentSystem::init());
+    #[error("Cant get file access contents because: {0}")]
+    FILE_ACCESS(String),
 
 }
 //
@@ -49,17 +38,20 @@ lazy_static::lazy_static! {
 // Subsystem
 //
 // 
-struct ComponentSystem{
-
-    components: Vec<CType> 
+struct ComponentSystem {
+    
+    id_counter: u32,
+    components: Vec<Box<dyn Component>> 
 
 }
 //
 impl ComponentSystem {
 
-    fn init() -> Self { ComponentSystem { components: Vec::new() } }
+    fn init() -> Self { ComponentSystem { id_counter:0, components: Vec::new() } }
 
-    fn push_component(&mut self,component:CType) {self.components.push(component); } 
+    fn push(&mut self,component:Box<dyn Component>)  { self.components.push(component); }
+
+    fn get(&self,id:u32) -> &Box<dyn Component> { &self.components[id as usize] } 
 
 }
 //
@@ -68,45 +60,5 @@ impl ComponentSystem {
 // Function Subsystem Access
 //
 //
-pub fn get_next_id() -> u32 {
 
-    let id = COMPONENT_ID_COUNTER.load(Ordering::Relaxed);
-
-    COMPONENT_ID_COUNTER.store(id + 1, Ordering::Release);
-
-    id
-
-}
-//
-//
-pub fn add_component(comp:CType) -> Result<(),EComponent> {
-
-    COMPONENT_SYS.lock().map_err(|e|
-        EComponent::SYS_ACCESS(e.to_string())
-    )?.push_component(comp);
-
-    Ok(())
-
-}
-//
-//
-pub fn get_component(cid:u32) -> Result<CType,EComponent> {
-
-    if COMPONENT_SYS.lock().map_err(|e|
-        EComponent::SYS_ACCESS(e.to_string())
-    )?.components.len() <= cid as usize {
-
-
-        return Err(EComponent::BAD_ID(cid));
-
-    }   
-
-    Ok(&COMPONENT_SYS.lock().map_err(|e|
-        EComponent::SYS_ACCESS(e.to_string())
-        )?.components[cid as usize]
-    )
-
-
-
-}
 

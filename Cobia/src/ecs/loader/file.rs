@@ -107,26 +107,12 @@ pub enum EFile {
 //
 pub(crate) fn load_file(path:&str) -> Result<CFile,ELoader> {
 
-    let access = match File::open(path) {
-
-        Ok(f) => f,
-
-        Err(e) => return Err(ELoader::from(EFile::FILE_LOAD { 
-                file: path.to_string(),
-                cause: e.to_string() 
-            }) 
-        )
-    };
-
     let ext = get_file_extension(path)?;
-
-
 
     Ok(
         CFile::new(
-            super::get_next_id(),
+            0,
             path.to_string(),
-            access,
             ext.to_string()        
         )
 

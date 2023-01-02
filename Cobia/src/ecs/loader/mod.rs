@@ -5,7 +5,7 @@ pub mod image;
 
 use thiserror::Error;
 
-use super::{get_next_id,types::CFile};
+use super::{types::CFile, EComponent};
 
 
 //
@@ -27,7 +27,15 @@ pub enum ELoader {
     },
 
     #[error("Unable to load image file {0} because {1}")]
-    LOAD_IMAGE(String, String)
+    LOAD_IMAGE(String, String),
+
+    #[error("Error caused by another component: {source}")]
+    COMPONENT_REF {
+
+        #[from]
+        source: EComponent
+
+    }
 
 
 }

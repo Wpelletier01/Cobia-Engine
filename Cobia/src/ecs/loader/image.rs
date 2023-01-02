@@ -2,7 +2,7 @@
 
 use std::io::BufReader;
 
-use super::{ELoader,get_next_id};
+use super::ELoader;
 use crate::{CWARN};
 
 use super::super::types::*;
@@ -59,7 +59,6 @@ mod itest {
                 println!("widht: {}", _img.get_width());
                 println!("pixel lenght: {}", _img.get_pixel_lenght());
 
-                println!("Component type: {:?}", _img.get_type());
                 println!("id of the image component: {}", _img.get_id());
 
             },
@@ -72,7 +71,7 @@ mod itest {
                 println!("widht: {}", _img.get_width());
                 println!("pixel lenght: {}", _img.get_pixel_lenght());
 
-                println!("Component type: {:?}", _img.get_type());
+             
                 println!("id of the image component: {}", _img.get_id());
 
             },
@@ -86,7 +85,6 @@ mod itest {
                 println!("widht: {}", _img.get_width());
                 println!("pixel lenght: {}", _img.get_pixel_lenght());
 
-                println!("Component type: {:?}", _img.get_type());
                 println!("id of the image component: {}", _img.get_id());
 
             },
@@ -100,7 +98,7 @@ mod itest {
                 println!("widht: {}", _img.get_width());
                 println!("pixel lenght: {}", _img.get_pixel_lenght());
 
-                println!("Component type: {:?}", _img.get_type());
+    
                 println!("id of the image component: {}", _img.get_id());
 
             },
@@ -114,7 +112,6 @@ mod itest {
                 println!("widht: {}", _img.get_width());
                 println!("pixel lenght: {}", _img.get_pixel_lenght());
 
-                println!("Component type: {:?}", _img.get_type());
                 println!("id of the image component: {}", _img.get_id());
 
             },
@@ -129,7 +126,6 @@ mod itest {
                 println!("widht: {}", _img.get_width());
                 println!("pixel lenght: {}", _img.get_pixel_lenght());
 
-                println!("Component type: {:?}", _img.get_type());
                 println!("id of the image component: {}", _img.get_id());
                 
 
@@ -202,7 +198,7 @@ fn load_png(cfile:&CFile) -> Result<CImage,ELoader> {
 
 
 
-    let decoder = png::Decoder::new(cfile.get_access());
+    let decoder = png::Decoder::new(cfile.get_access()?);
     let mut reader = match decoder.read_info() {
 
         Ok(r) => r,
@@ -240,7 +236,7 @@ fn load_png(cfile:&CFile) -> Result<CImage,ELoader> {
 
             Ok(CImage::RGB8(
                 Rgb8Image::new(
-                    get_next_id(),
+                    0,
                     cfile.get_id(),
                     reader.info().width as u16, 
                     reader.info().height as u16, 
@@ -255,7 +251,7 @@ fn load_png(cfile:&CFile) -> Result<CImage,ELoader> {
             
             Ok(CImage::RGBA8(
                     Rgba8Image::new(
-                        get_next_id(),
+                        0,
                         cfile.get_id(),
                         reader.info().width as u16, 
                         reader.info().height as u16, 
@@ -264,8 +260,6 @@ fn load_png(cfile:&CFile) -> Result<CImage,ELoader> {
                 )
             )
             
-
-
         },
 
         _ => Err(ELoader::LOAD_IMAGE(
@@ -281,7 +275,7 @@ fn load_png(cfile:&CFile) -> Result<CImage,ELoader> {
 //
 fn load_jpeg(file: &CFile) -> Result<CImage,ELoader> {
 
-    let mut decoder = jpeg_decoder::Decoder::new(BufReader::new(file.get_access()));
+    let mut decoder = jpeg_decoder::Decoder::new(BufReader::new(file.get_access()?));
 
     let data = match decoder.decode() {
 
@@ -309,7 +303,7 @@ fn load_jpeg(file: &CFile) -> Result<CImage,ELoader> {
 
                     Ok(CImage::RGB8( 
                         Rgb8Image::new(
-                            get_next_id(),
+                            0,
                             file.get_id(),
                             info.width,
                             info.height,

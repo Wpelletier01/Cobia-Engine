@@ -8,6 +8,8 @@ use crate::renderer::primitives::*;
 
 use crate::renderer::opengl::buffer::{TBO,VAO,VBO,EBO};
 
+use super::EComponent;
+
 
 // ------------------------------------------------------------------------------------------------
 // General
@@ -16,24 +18,26 @@ use crate::renderer::opengl::buffer::{TBO,VAO,VBO,EBO};
 /// Common trait for all components of the engine
 pub trait Component {
     //
-    /// get th id of the component 
-    /// TODO: maybe it represents the index of the component in an array of components?
+    /// get the id of the component 
     fn get_id(&self) -> u32;
     //
-  
+    /// return the type of the component
+    fn get_type(&self) -> CType;
+    //
+    //
 }
 //
 //
 /// All the possible types of components
 pub enum CType {
 
-    FILE    (CFile),
-    IMAGE   (CImage),
-    TEXTURE (CTexture),
-    MESH    (CMesh),
-    GBUFFER (CBuffer),
-    SHADER  (CShader),
-    SOURCE  (CSource),
+    FILE,
+    IMAGE,
+    TEXTURE,
+    MESH,
+    GBUFFER,
+    SHADER,
+    SOURCE,
 
 }
 //
@@ -43,12 +47,12 @@ pub enum CType {
 //
 // TODO: add possibility for mutable types 
 //
+//
 /// lowest representation of a system file in the engine
 pub(crate) struct CFile {
 
     id:         u32,    
     path:       String,
-    access:     File,
     ext:        String
     
 }
@@ -57,12 +61,11 @@ impl CFile {
     //
     //
     /// create a new Cfile struct 
-    pub fn new(id: u32, path: String,access:File,ext:String) -> Self {
+    pub fn new(id: u32, path: String,ext:String) -> Self {
 
         CFile {
             id:         id,
             path:       path,
-            access:     access,
             ext:        ext
         }
     }
@@ -74,7 +77,16 @@ impl CFile {
     pub fn get_path(&self) -> &str { &self.path }
     //
     /// get an access to the file contents 
-    pub fn get_access(&self) -> &File { &self.access }
+    pub fn get_access(&self) -> Result<File,EComponent> {
+    
+        match File::open(&self.path) {
+
+            Ok(f) => Ok(f),
+            Err(e) => return Err(EComponent::FILE_ACCESS(e.to_string()))
+
+        }
+    
+    }
     //
     //
 }
@@ -83,7 +95,7 @@ impl Component for CFile {
 
     fn get_id(&self) -> u32 { self.id }
 
- 
+    fn get_type(&self) -> CType { CType::FILE }
 
 }
 //
@@ -136,7 +148,7 @@ pub(crate) enum CImage {
 // RGB8 image
 //
 //
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 /// Lowest representation of an rgb8 image in this engine
 pub(crate) struct Rgb8Image {
 
@@ -151,6 +163,7 @@ pub(crate) struct Rgb8Image {
 impl Component for Rgb8Image { 
 
     fn get_id(&self) -> u32 { self.id }
+    fn get_type(&self) -> CType { CType::IMAGE } 
 
 }
 //
@@ -199,8 +212,9 @@ pub(crate) struct Rgb16Image {
 impl Component for Rgb16Image { 
 
     fn get_id(&self) -> u32 { self.id }
- 
 
+    fn get_type(&self) -> CType { CType::IMAGE }
+ 
 }
 //
 impl ImageTrait<u16> for Rgb16Image {
@@ -208,6 +222,7 @@ impl ImageTrait<u16> for Rgb16Image {
     fn new(id:u32,src:u32,w:u16,h:u16,data:Vec<u16>) -> Self {
         
         Rgb16Image { 
+            
             id:     id,
             src:    src, // id of cfile struct
             width:  w,
@@ -234,7 +249,7 @@ impl ImageTrait<u16> for Rgb16Image {
 // RGB32 image
 //
 //
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 /// Lowest representation of an rgb32 image in this engine
 pub(crate) struct Rgb32Image {
 
@@ -249,6 +264,8 @@ pub(crate) struct Rgb32Image {
 impl Component for Rgb32Image { 
 
     fn get_id(&self) -> u32 { self.id }
+
+    fn get_type(&self) -> CType { CType::IMAGE }
 
 }
 //
@@ -283,7 +300,7 @@ impl ImageTrait<u32> for Rgb32Image {
 // RGBA8 image
 //
 //
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 /// Lowest representation of an rgba8 image in this engine
 pub(crate) struct Rgba8Image {
 
@@ -298,6 +315,8 @@ pub(crate) struct Rgba8Image {
 impl Component for Rgba8Image {
     
     fn get_id(&self) -> u32 { self.id }
+
+    fn get_type(&self) -> CType { CType::IMAGE }
 
 }
 //
@@ -346,6 +365,7 @@ pub(crate) struct Rgba16Image {
 impl Component for Rgba16Image {
     
     fn get_id(&self) -> u32 { self.id }
+    fn get_type(&self) -> CType { CType::IMAGE }
 
 }
 //
@@ -394,6 +414,7 @@ pub(crate) struct Rgba32Image {
 impl Component for Rgba32Image {
     
     fn get_id(&self) -> u32 { self.id }
+    fn get_type(&self) -> CType { CType::IMAGE }
 
 }
 //
@@ -445,14 +466,6 @@ pub(crate) trait GTexture {
 }
 //
 //
-pub enum CTexture {
-
-    GL2D(GTexture2D)
-
-}
-
-//
-//
 pub(crate) struct GTexture2D {
 
     id:             u32,
@@ -465,6 +478,8 @@ pub(crate) struct GTexture2D {
 impl Component for GTexture2D {
 
     fn get_id(&self) -> u32 { self.id }
+
+    fn get_type(&self) -> CType { CType::TEXTURE }
 
 }
 //
@@ -490,16 +505,6 @@ impl GTexture for GTexture2D {
 // Graphics primitives buffer
 //
 //
-pub enum CBuffer {
-
-    FVERT(FVerticesBuffer),
-    DVERT(DVerticesBuffer),
-    INDICE(IndicesBuffer)
-
-}
-
-//
-//
 /// Float Vertices
 pub(crate) struct FVerticesBuffer{
 
@@ -511,7 +516,9 @@ pub(crate) struct FVerticesBuffer{
 impl Component for FVerticesBuffer {
 
     fn get_id(&self) -> u32 { self.id }
-   
+    
+    fn get_type(&self) -> CType { CType::GBUFFER }
+
 }
 //
 //
@@ -527,7 +534,8 @@ pub(crate) struct DVerticesBuffer {
 impl Component for DVerticesBuffer {
 
     fn get_id(&self) -> u32 { self.id }
-   
+    fn get_type(&self) -> CType { CType::GBUFFER }
+
 }
 //
 //
@@ -540,19 +548,13 @@ pub(crate) struct IndicesBuffer{
 impl Component for IndicesBuffer {
 
     fn get_id(&self) -> u32 { self.id }
-   
+    fn get_type(&self) -> CType { CType::GBUFFER }
+
 }
 //
 //
 // ------------------------------------------------------------------------------------------------
 // Mesh
-//
-//
-
-pub enum CMesh {
-
-    GMESH(GMesh)
-}
 //
 //
 pub trait MeshTrait {
@@ -582,6 +584,7 @@ pub(crate) struct GMesh {
 impl Component for GMesh { 
 
     fn get_id(&self) -> u32 { self.id } 
+    fn get_type(&self) -> CType { CType::GBUFFER }
    
 }
 //
@@ -597,13 +600,6 @@ impl MeshTrait for GMesh {
 // Shader
 //
 //
-pub enum CSource {
-
-    GSOURCE(GSource)
-
-}
-
-//
 //
 pub(crate) struct GSource {
 
@@ -617,6 +613,7 @@ pub(crate) struct GSource {
 impl Component for GSource {
 
     fn get_id(&self) -> u32 { self.id }
+    fn get_type(&self) -> CType { CType::SOURCE }
     
 }
 //
@@ -628,13 +625,6 @@ impl GSource {
 }
 //
 //
-pub enum CShader {
-
-    GSHADER(GShader)
-
-}
-//
-//
 pub(crate) struct GShader {
 
     id:     u32,
@@ -642,7 +632,12 @@ pub(crate) struct GShader {
 
 }
 //
+impl Component for GShader {
 
+    fn get_id(&self) -> u32 { self.id }
+    fn get_type(&self) -> CType { CType::SHADER }
+    
+}
 
 //
 //
