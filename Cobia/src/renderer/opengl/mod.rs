@@ -2,7 +2,7 @@
 
 pub(crate) mod api;
 pub(crate) mod buffer;
-
+pub(crate) mod shader;
 
 use thiserror::Error;
 
@@ -15,6 +15,9 @@ pub(crate) enum EOpenGL {
     API_CALL(String,String),
 
     #[error("An OpenGl {0} buffer error ocurred because: {1}")]
-    BUFFER(String,String)
+    BUFFER(String,String),
+
+    #[error("Compilation failed: {0}")]
+    COMPILE_SHADER(String)    
  
 }

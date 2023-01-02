@@ -9,13 +9,29 @@ pub(crate) mod core;
 
 
 use thiserror::Error;
+//
+//
+// ------------------------------------------------------------------------------------------------ 
+// Notes 
+/*
+    
+    g prefix for variables or struct represented something that use the opengl renderer api
+    E prefix for Error enum 
 
+*/
+//
+// ------------------------------------------------------------------------------------------------
+// TODO List 
+/* 
 
+    TODO: make error accepting more generic types
 
-// TODO: make error accepting more generic types
-
-
-/// function for making testing more convenient
+*/
+//
+// ------------------------------------------------------------------------------------------------
+//
+//
+/// function for making some test more convenient
 pub(crate) mod test_helper {
 
     use std::env;
@@ -59,8 +75,8 @@ mod quick_test {
 #[derive(Debug,Error)] 
 pub enum ECobia {
 
-    #[error("Can't convert {from} to {to} while accessing {access}")]
-    ConversionError{ from: String, to: String, access: String },
+    #[error("Can't convert {from} to {to} while accessing {how}")]
+    CONVERSION { from: String, to: String, how: String },
 
 
 
