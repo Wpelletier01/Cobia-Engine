@@ -1,7 +1,12 @@
+#![allow(dead_code)]
+
+
 use std::fs::File;
 
 
+use crate::renderer::primitives::*;
 
+use crate::renderer::opengl::buffer::{TBO,VAO,VBO,EBO};
 
 
 // ------------------------------------------------------------------------------------------------
@@ -15,18 +20,20 @@ pub trait Component {
     /// TODO: maybe it represents the index of the component in an array of components?
     fn get_id(&self) -> u32;
     //
-    /// return the type of the component
-    fn get_type(&self) -> CType;
-    //
+  
 }
 //
 //
 /// All the possible types of components
 pub enum CType {
 
-    FILE,
-    IMAGE,
-    TEXTURE
+    FILE    (CFile),
+    IMAGE   (CImage),
+    TEXTURE (CTexture),
+    MESH    (CMesh),
+    GBUFFER (CBuffer),
+    SHADER  (CShader),
+    SOURCE  (CSource),
 
 }
 //
@@ -76,7 +83,7 @@ impl Component for CFile {
 
     fn get_id(&self) -> u32 { self.id }
 
-    fn get_type(&self) -> CType { CType::FILE }
+ 
 
 }
 //
@@ -112,7 +119,8 @@ pub trait ImageTrait<T> {
 }
 //
 //
-pub(crate) enum Images {
+#[derive(Debug)]
+pub(crate) enum CImage {
 
     RGB8(Rgb8Image),
     RGB16(Rgb16Image),
@@ -127,6 +135,8 @@ pub(crate) enum Images {
 // ------------------------------------------------------------------------------------------------
 // RGB8 image
 //
+//
+#[derive(Debug)]
 /// Lowest representation of an rgb8 image in this engine
 pub(crate) struct Rgb8Image {
 
@@ -141,8 +151,6 @@ pub(crate) struct Rgb8Image {
 impl Component for Rgb8Image { 
 
     fn get_id(&self) -> u32 { self.id }
-
-    fn get_type(&self) -> CType { CType::IMAGE } 
 
 }
 //
@@ -175,11 +183,13 @@ impl ImageTrait<u8> for Rgb8Image {
 // ------------------------------------------------------------------------------------------------
 // RGB16 image
 //
+//
+#[derive(Debug,Clone)]
 /// Lowest representation of an rgb16 image in this engine
 pub(crate) struct Rgb16Image {
 
     id:         u32,
-    src:        u32,
+    src:        u32, // id of cfile struct
     width:      u16,
     height:     u16,
     data:       Vec<u16>, 
@@ -189,8 +199,7 @@ pub(crate) struct Rgb16Image {
 impl Component for Rgb16Image { 
 
     fn get_id(&self) -> u32 { self.id }
-
-    fn get_type(&self) -> CType { CType::IMAGE } 
+ 
 
 }
 //
@@ -200,7 +209,7 @@ impl ImageTrait<u16> for Rgb16Image {
         
         Rgb16Image { 
             id:     id,
-            src:    src,
+            src:    src, // id of cfile struct
             width:  w,
             height: h,
             data:   data 
@@ -224,6 +233,8 @@ impl ImageTrait<u16> for Rgb16Image {
 // ------------------------------------------------------------------------------------------------
 // RGB32 image
 //
+//
+#[derive(Debug)]
 /// Lowest representation of an rgb32 image in this engine
 pub(crate) struct Rgb32Image {
 
@@ -238,8 +249,6 @@ pub(crate) struct Rgb32Image {
 impl Component for Rgb32Image { 
 
     fn get_id(&self) -> u32 { self.id }
-
-    fn get_type(&self) -> CType { CType::IMAGE } 
 
 }
 //
@@ -274,11 +283,12 @@ impl ImageTrait<u32> for Rgb32Image {
 // RGBA8 image
 //
 //
+#[derive(Debug)]
 /// Lowest representation of an rgba8 image in this engine
 pub(crate) struct Rgba8Image {
 
     id:     u32,
-    src:    u32,
+    src:    u32, // id of cfile struct
     width:  u16,
     height: u16,
     data:   Vec<u8>, 
@@ -288,8 +298,6 @@ pub(crate) struct Rgba8Image {
 impl Component for Rgba8Image {
     
     fn get_id(&self) -> u32 { self.id }
-
-    fn get_type(&self) -> CType { CType::IMAGE } 
 
 }
 //
@@ -323,11 +331,12 @@ impl ImageTrait<u8> for Rgba8Image {
 // RGBA16 image
 //
 //
+#[derive(Debug)]
 /// Lowest representation of an rgba16 image in this engine
 pub(crate) struct Rgba16Image {
 
     id:     u32,
-    src:    u32,
+    src:    u32, // id of cfile struct
     width:  u16,
     height: u16,
     data:   Vec<u16>,
@@ -337,8 +346,6 @@ pub(crate) struct Rgba16Image {
 impl Component for Rgba16Image {
     
     fn get_id(&self) -> u32 { self.id }
-
-    fn get_type(&self) -> CType { CType::IMAGE } 
 
 }
 //
@@ -372,11 +379,12 @@ impl ImageTrait<u16> for Rgba16Image {
 // RGBA32 image
 //
 //
+#[derive(Debug)]
 /// Lowest representation of an rgba32 image in this engine
 pub(crate) struct Rgba32Image {
 
     id:     u32,
-    src:    u32,
+    src:    u32, // id of cfile struct
     width:  u16,
     height: u16,
     data:   Vec<u32>, 
@@ -386,8 +394,6 @@ pub(crate) struct Rgba32Image {
 impl Component for Rgba32Image {
     
     fn get_id(&self) -> u32 { self.id }
-
-    fn get_type(&self) -> CType { CType::IMAGE } 
 
 }
 //
@@ -421,6 +427,224 @@ impl ImageTrait<u32> for Rgba32Image {
 // Texture 
 //
 // 
+pub(crate) trait GTexture {
+    //
+    /// get the component id of the image texture 
+    fn get_src(&self) -> u32;
+    //
+    /// return the texture target for opengl calls
+    fn get_target(&self) -> u32;
+    //
+    /// return the level of detail that opengl should interpret
+    fn get_details_lvl(&self) -> u8;
+    //
+    /// access the opengl texture object that is linked to this struct 
+    fn access_gl_buffer(&self) -> &TBO;
+    //
+    //
+}
+//
+//
+pub enum CTexture {
+
+    GL2D(GTexture2D)
+
+}
 
 //
 //
+pub(crate) struct GTexture2D {
+
+    id:             u32,
+    src:            u32, // id of an image component
+    gbuffer:        TBO, 
+    details_lvl:    u8,
+
+}
+//
+impl Component for GTexture2D {
+
+    fn get_id(&self) -> u32 { self.id }
+
+}
+//
+impl GTexture for GTexture2D {
+
+    fn get_details_lvl(&self) -> u8 { self.details_lvl }
+
+    fn get_src(&self) -> u32 { self.src }
+
+    fn get_target(&self) -> u32 { gl::TEXTURE_2D }
+
+    fn access_gl_buffer(&self) -> &TBO { &self.gbuffer }
+
+}
+//
+//
+
+
+
+//
+//
+// ------------------------------------------------------------------------------------------------ 
+// Graphics primitives buffer
+//
+//
+pub enum CBuffer {
+
+    FVERT(FVerticesBuffer),
+    DVERT(DVerticesBuffer),
+    INDICE(IndicesBuffer)
+
+}
+
+//
+//
+/// Float Vertices
+pub(crate) struct FVerticesBuffer{
+
+    id:     u32,
+    data:   Vec<FVertex>
+
+}
+//
+impl Component for FVerticesBuffer {
+
+    fn get_id(&self) -> u32 { self.id }
+   
+}
+//
+//
+
+/// Double Vertices
+pub(crate) struct DVerticesBuffer {
+
+    id:     u32,
+    data:   Vec<DVertex>
+
+}
+//
+impl Component for DVerticesBuffer {
+
+    fn get_id(&self) -> u32 { self.id }
+   
+}
+//
+//
+pub(crate) struct IndicesBuffer{
+
+    id:     u32,
+    data:   Vec<Indice>
+}
+//
+impl Component for IndicesBuffer {
+
+    fn get_id(&self) -> u32 { self.id }
+   
+}
+//
+//
+// ------------------------------------------------------------------------------------------------
+// Mesh
+//
+//
+
+pub enum CMesh {
+
+    GMESH(GMesh)
+}
+//
+//
+pub trait MeshTrait {
+    //
+    /// return the id of the indices buffer
+    fn get_indices(&self) -> u32;
+    //
+    /// return the id of the vertices buffer
+    fn get_vertices(&self) -> u32;
+    //
+    //
+}
+//
+//
+pub(crate) struct GMesh {
+
+    id:         u32,
+    vertices:   u32,
+    indices:    u32,
+    vao:        VAO,
+    vbo:        VBO,
+    ebo:        EBO,
+
+
+}
+//
+impl Component for GMesh { 
+
+    fn get_id(&self) -> u32 { self.id } 
+   
+}
+//
+impl MeshTrait for GMesh {
+
+    fn get_indices(&self) -> u32 { self.vertices }
+    fn get_vertices(&self) -> u32 { self.vertices }
+
+}
+//
+//
+// ------------------------------------------------------------------------------------------------
+// Shader
+//
+//
+pub enum CSource {
+
+    GSOURCE(GSource)
+
+}
+
+//
+//
+pub(crate) struct GSource {
+
+    id:     u32,
+    
+    src:    u32, // id of a file component
+    gid:    u32  // source id
+
+}
+//
+impl Component for GSource {
+
+    fn get_id(&self) -> u32 { self.id }
+    
+}
+//
+impl GSource {
+
+    
+
+
+}
+//
+//
+pub enum CShader {
+
+    GSHADER(GShader)
+
+}
+//
+//
+pub(crate) struct GShader {
+
+    id:     u32,
+    source: Vec<u32>  
+
+}
+//
+
+
+//
+//
+
+

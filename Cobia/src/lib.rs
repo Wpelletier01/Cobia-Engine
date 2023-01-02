@@ -9,25 +9,44 @@ pub(crate) mod core;
 
 
 use thiserror::Error;
-use std::convert::AsRef;
+
 
 
 // TODO: make error accepting more generic types
 
 
-#[cfg(test)]
-mod quick_test {
+/// function for making testing more convenient
+pub(crate) mod test_helper {
 
     use std::env;
 
-    fn get_relative_path(p:&str) -> String {
+    pub(crate) fn get_relative_path(p:&str) -> String {
         format!("{}/{}",env::current_dir().unwrap().to_str().unwrap(),p)
     }
+
+
+}
+
+
+#[cfg(test)]
+mod quick_test {
+
+    use std::fs::File;
+    use std::io::BufReader;
+
+    use super::test_helper;
 
     #[test]
     fn tmain() {
 
+        let s = test_helper::get_relative_path("data/test/test2.jpg");
 
+        let file = File::open(s).expect("failed to open file");
+        let mut decoder = jpeg_decoder::Decoder::new(BufReader::new(file));
+        let pixels = decoder.decode().expect("failed to decode image");
+        let metadata = decoder.info().unwrap();
+
+        println!("{:?}",metadata);
 
     }
 

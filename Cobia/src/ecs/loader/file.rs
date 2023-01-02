@@ -1,17 +1,80 @@
 
+// TODO: add comment
 
-use std::convert::AsRef;
 use std::path::Path;
 use std::fs::File;
 
 use thiserror::Error;
 
 
-use super::types::CFile;
-use super::EComponent;
+use super::{CFile,ELoader};
 use crate::ECobia;
 
+//
+//
+// ------------------------------------------------------------------------------------------------
+// Test
+//
+//
+#[cfg(test)]
+mod ftest {
 
+    use super::*;
+    
+    use std::env;
+
+    fn get_relative_path(path:&str) -> String {
+
+        format!(
+            "{}/{}",
+            env::current_dir().unwrap().to_str().unwrap(),
+            path
+        )
+
+    }
+
+    #[test]
+    fn load_dir() {
+
+        let s = get_relative_path("data/test");
+        
+        let f = load_file(&s);
+        
+        assert!(f.is_err()) 
+        
+    }
+
+    #[test]
+    fn load_file_with_no_ext() {
+
+        let s = get_relative_path("data/test/test_no_ext");
+
+        let f =  load_file(&s);
+
+        assert!(f.is_err())
+
+
+    }
+
+    #[test]
+    fn correct_extension() {
+
+        let s = get_relative_path("data/test/test1.png");
+
+        let f = load_file(&s).unwrap();
+
+        assert_eq!(f.get_extension(),"png");
+
+    }
+
+
+}
+//
+//
+// ------------------------------------------------------------------------------------------------
+// Error
+//
+//
 #[allow(non_camel_case_types)]
 #[derive(Error, Debug)]
 pub enum EFile {
@@ -36,18 +99,19 @@ pub enum EFile {
     FILE_LOAD{ file: String, cause: String }
   
 }
-
-
-
 //
 //
-pub(crate) fn load_file(path:&str) -> Result<CFile,EComponent> {
+// ------------------------------------------------------------------------------------------------
+// Function
+//
+//
+pub(crate) fn load_file(path:&str) -> Result<CFile,ELoader> {
 
     let access = match File::open(path) {
 
         Ok(f) => f,
 
-        Err(e) => return Err( EComponent::from(EFile::FILE_LOAD { 
+        Err(e) => return Err(ELoader::from(EFile::FILE_LOAD { 
                 file: path.to_string(),
                 cause: e.to_string() 
             }) 
@@ -77,8 +141,8 @@ pub(crate) fn load_file(path:&str) -> Result<CFile,EComponent> {
 /// 
 /// * 'path' - File path to the file we want the extension
 ///  
-pub fn get_file_extension(path: &str) -> Result<&str,EComponent> {
-    //
+pub fn get_file_extension(path: &str) -> Result<&str,ELoader> {
+    
      
     let p = Path::new(path);
 
@@ -100,13 +164,13 @@ pub fn get_file_extension(path: &str) -> Result<&str,EComponent> {
                         }
                     );
 
-                    return Err(EComponent::from(e));
+                    return Err(ELoader::from(e));
 
                 }
             }
         },
 
-        None => return Err(EComponent::from(EFile::FILE_EXT(path.to_string())))
+        None => return Err(ELoader::from(EFile::FILE_EXT(path.to_string())))
     
     }
     //

@@ -292,7 +292,7 @@ impl TBO {
     /// 
     /// # Arguments
     /// 
-    /// * 'level_details' - Specifies the level-of-detail number
+    /// * 'details_lvl' - Specifies the level-of-detail number
     /// * 'internal_fmt'  - Specifies the number of color components in the texture
     /// * 'width'         - width of the image
     /// * 'height'        - height of the image
@@ -301,7 +301,7 @@ impl TBO {
     /// 
     fn set_2d_image_source<T>(
         &self,
-        level_details:  i32,
+        details_lvl:  i32,
         internal_fmt:   i32,
         width:          i32,
         height:         i32,
@@ -311,13 +311,13 @@ impl TBO {
     {
         
         //
-        // cant have level_details other than zero with the this type of target
+        // cant have details_lvl other than zero with the this type of target
         if [gl::TEXTURE_RECTANGLE,gl::PROXY_TEXTURE_RECTANGLE].contains(&self.target) 
-            && level_details != 0 {
+            && details_lvl != 0 {
 
             return Err(EOpenGL::BUFFER(
                 "texture".to_string(),
-                "level_details must be 0 if target is ether gl::TEXTURE_RECTANGLE or
+                "details_lvl must be 0 if target is ether gl::TEXTURE_RECTANGLE or
                 gl::PROXY_TEXTURE_RECTANGLE".to_string()
 
             ));                
@@ -401,7 +401,7 @@ impl TBO {
         //
         api::tex_image_2d(
             self.target,
-            level_details,
+            details_lvl,
             internal_fmt,
             width,
             height,
