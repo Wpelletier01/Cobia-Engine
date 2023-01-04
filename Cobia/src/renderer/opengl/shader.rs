@@ -8,10 +8,6 @@ use super::{api,EOpenGL};
 use ShaderParser::ShaderFileInfo;
 
 
-
-
-
-
 pub struct Source {
 
     id:         u32,
@@ -82,5 +78,72 @@ impl Source {
     pub fn is_compiled(&self) -> bool { self.compiled }
     //
     pub fn get_gid(&self) -> u32 { self.id}
+    //
+}
+//
+//
+//
+pub struct Program {
+
+    id:     u32,
+
+}
+//
+impl Program {
+    //
+    //
+    pub fn new() -> Result<Self,EOpenGL> {
+        
+        let id =  api::create_program()?;
+        Ok( Program { id: id } )
+
+    }
+    //
+    //
+    pub fn attach_shader(&self, shader: &Source) -> Result<(),EOpenGL> {
+
+        api::attach_shader(&self.id, &shader.get_gid())?;
+
+        Ok(())
+
+    }
+    //
+    //
+    pub fn link(&self) -> Result<(),EOpenGL> {
+
+        api::link_program(&self.id)?;
+
+        Ok(())
+
+    }
+    //
+    //
+    pub fn make_current(&self) -> Result<(),EOpenGL> {
+
+        api::use_program(&self.id)?;
+
+        Ok(())
+
+    }   
+    //
+    //
+    pub fn get_id(&self) -> u32 { self.id }
+    //
+    //
+    pub fn set_int_var(&self,var_name:&str, value:i32) -> Result<(),EOpenGL> {
+
+
+        let c_var = CString::new(var_name).unwrap();
+
+
+        let location  = api::get_uniform_location(&self.id, c_var)?;
+
+        api::uniform_int_1(location, value)?;
+        
+        Ok(())
+
+
+    }
+    //
     //
 }

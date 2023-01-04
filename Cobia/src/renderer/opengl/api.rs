@@ -5,11 +5,16 @@ use std::ptr;
 
 use super::EOpenGL;
 use crate::CERROR;
-
-use gl::types::{GLuint,GLint,GLchar,GLbitfield};
-
-type GLenum = u32;
-
+use std::os::raw::{c_uint,c_int,c_char};
+//
+//
+type GLenum =       u32;
+type GLuint =       c_uint;
+type GLint  =       c_int;
+type GLchar =       c_char;
+type GLbitfield =   c_uint;
+//
+//
 // ------------------------------------------------------------------------------------------------
 // Constant 
 //

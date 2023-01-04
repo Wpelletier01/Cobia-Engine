@@ -5,7 +5,7 @@ pub mod types;
 
 use types::Component;
 use thiserror::Error;
-
+use ShaderParser::EParser;
 
 
 
@@ -72,8 +72,14 @@ pub enum EComponent {
     //
     //
     #[error("unsupported shader file with extension: {0}")]
-    SHADER_TYPE(String)
+    SHADER_TYPE(String),
+    
+    #[error("Error when parsing shader: {source} ")]
+    PARSER {
+        #[from]
+        source: EParser
 
+    },
 
     //
     // --------------------------------------------------------------------------------------------
@@ -91,18 +97,22 @@ pub enum EComponent {
 struct ComponentSystem {
     
     id_counter: u32,
-    components: Vec<Box<dyn Component>> 
+    components: Vec<Box<dyn Component>>,
+    current_shader: u32 
 
 }
 //
 impl ComponentSystem {
 
-    fn init() -> Self { ComponentSystem { id_counter:1, components: Vec::new() } }
+    fn init() -> Self { ComponentSystem { id_counter:1, components: Vec::new(), current_shader: 0 } }
 
     fn push(&mut self,component:Box<dyn Component>)  { self.components.push(component); }
 
     fn get(&self,id:u32) -> &Box<dyn Component> { &self.components[id as usize] } 
 
+    pub fn set_curent_shader(&mut self, id:u32) { self.current_shader = id }
+
+    
 }
 //
 //

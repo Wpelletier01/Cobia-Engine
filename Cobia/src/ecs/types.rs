@@ -6,11 +6,12 @@ use std::ffi::CString;
 use std::fs::{File, self};
 use std::path::Path;
 use std::io::BufReader;
+use ShaderParser::ShaderFileInfo;
 
-use crate::ECobia;
+use crate::{ECobia, CERROR};
 use crate::renderer::primitives::*;
 use crate::renderer::opengl::buffer::{TBO,VAO,VBO,EBO};
-use crate::renderer::opengl::shader::{Source};
+use crate::renderer::opengl::shader::{Source,Program};
 use crate::CWARN;
 
 use super::EComponent;
@@ -858,9 +859,10 @@ impl MeshTrait for GMesh {
 //
 pub(crate) struct GShader {
 
-    id:         u32,
-    src:        u32, // id of a file component
-    gsource:    u32  // opengl shader object
+    id:             u32,
+    src:            u32, // id of a file component
+    gsource:        Source,  // opengl shader object
+    declaration:    ShaderFileInfo
 
 }
 //
@@ -875,12 +877,22 @@ impl Component for GShader {
 //
 impl GShader {
 
-    pub fn new(file:&CFile) -> Result<Self,EComponent> {
+    pub fn new(id:u32,file:&CFile) -> Result<Self,EComponent> {
 
 
-        let content = Self::load_as_cstring(file.get_file_content())?;
+        let content =  match CString::new(file.get_file_content()) {
 
-        let stype = match file.get_extension() {
+            Ok(c) => c,
+            Err(_) => return Err(EComponent::from(ECobia::CONVERSION { 
+                    from: "&[u8]".to_string(),
+                    to: "CString".to_string(),
+                    how: format!("get file with id {} for a gshader struct",file.get_id())
+                    }
+                )
+                )
+        };
+
+        let stype =  match file.get_extension() {
 
             "frag" => gl::FRAGMENT_SHADER,
             "vert" => gl::VERTEX_SHADER,
@@ -892,27 +904,13 @@ impl GShader {
 
         let gsource = Source::new(&content,stype)?;
         
-        
+        let mut sinfo = ShaderFileInfo::new();
 
 
-    }
-    
+        sinfo.parse_line(file.get_file_content())?;
 
-    fn load_as_cstring(file_content:&[u8]) -> Result<CString,EComponent> {
+        Ok( GShader { id: 0, src: file.get_id(), gsource: gsource, declaration: sinfo })
 
-        match CString::new(file_content) {
-
-            Ok(c) => Ok(c),
-            Err(_) => Err(EComponent::from(
-                ECobia::CONVERSION { 
-                    from: "&[u8]".to_string(),
-                    to: "CString".to_string(),
-                    how: format!("get file content for gshader with id {}",self.id)
-                    }
-                )
-            )
-
-        }
 
     }
     
@@ -922,8 +920,8 @@ impl GShader {
 pub(crate) struct GShaderProgram {
 
     id:         u32,
-    gsource:    Vec<u32>,
-    gprogram:   []   
+    gsource:    Vec<u32>, // id of GSource component
+    gprogram:   Program  
 
 }
 //
@@ -936,7 +934,59 @@ impl Component for GShaderProgram {
     
 }
 //
+impl GShaderProgram {
+
+
+    pub fn new_from_2(id:u32, fragment_shader:&mut GShader,vertex_shader:&mut GShader) -> Result<Self,EComponent> {
+
+        let gprog = Program::new()?;
+
+        if !fragment_shader.gsource.is_compiled() {
+
+            CWARN!("fragment shader passed is not compile. It will be");
+
+            fragment_shader.gsource.compile()?;
+
+        }
+
+        if!vertex_shader.gsource.is_compiled() {
+
+            CWARN!("fragment shader passed is not compile. It will be");
+
+            vertex_shader.gsource.compile()?;
+
+        }
+
+        gprog.attach_shader(&vertex_shader.gsource)?;
+        gprog.attach_shader(&fragment_shader.gsource)?;
+        
+        gprog.link()?;
+
+        Ok(GShaderProgram { 
+            id: 0, 
+            gprogram: gprog,
+            gsource: vec![ fragment_shader.get_id(), vertex_shader.get_id() ] 
+            }
+        )
+
+
+    }
+
+
+}
+//
 //
 // ------------------------------------------------------------------------------------------------
+// Graphics entity 
+// 
+//
+pub struct GModel {
+
+    id:             u32,
+    gmeshes:        Vec<u32>,
+    gtextures:      Vec<u32>
+
+    
+}
 
 

@@ -50,6 +50,9 @@ mod quick_test {
     use std::fs::File;
     use std::io::BufReader;
 
+    use winit::event_loop::{ControlFlow, EventLoop};
+    use winit::window::WindowBuilder;   
+
     use super::test_helper;
 
     #[test]
@@ -63,6 +66,15 @@ mod quick_test {
         let metadata = decoder.info().unwrap();
 
         println!("{:?}",metadata);
+
+    }
+
+
+    #[test]
+    fn opengl_playfield() {
+
+
+
 
     }
 
