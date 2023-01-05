@@ -2,15 +2,16 @@
 // TODO: add comment
 
 use ash::vk;
-use std::ffi::CString;
+use std::ffi::{CString,c_void,CStr};
 use std::ptr;
+
+
 
 use super::EVlk;
 use super::utils;
 
-use crate::CERROR;
-use crate::CFATAL;
-use crate::CWARN;
+
+use crate::core::logs::{CTRACE,CDEBUG,CERROR,CWARN,CTRACES,CFATAL,CINFO};
 use crate::define::{VLK_API_VERSION,VLK_ENGINE_VERSION,VLK_APP_VERSION};
 //
 //
@@ -45,6 +46,8 @@ pub(crate) fn create_instance(app_name:&str,entry: &ash::Entry) -> Result<ash::I
 
     let require_extensions = utils::required_extension_names();
 
+    
+
     let create_info = vk::InstanceCreateInfo {
 
         s_type: vk::StructureType::INSTANCE_CREATE_INFO,
@@ -74,6 +77,8 @@ pub(crate) fn create_instance(app_name:&str,entry: &ash::Entry) -> Result<ash::I
 // Validation layer
 //
 //
+// TODO: integrate with debug and instance creation
+//
 pub fn check_validation_layer_support(entry: &ash::Entry) -> bool {
 
 
@@ -82,7 +87,7 @@ pub fn check_validation_layer_support(entry: &ash::Entry) -> bool {
         Ok(v) => v,
         Err(e) => {
 
-            CFATAL!("Unable to enumerate layer properties because: {}",e.to_string().as_str());
+            CFATAL("Unable to enumerate layer properties because: {}",&[&e.to_string()]);
 
             return false;
 
@@ -93,7 +98,7 @@ pub fn check_validation_layer_support(entry: &ash::Entry) -> bool {
 
     if layer_properties.len() <= 0 {
 
-        CERROR!("No available layer");
+        CERROR("No available layer",&[]);
 
         return false;
 
@@ -111,7 +116,7 @@ pub fn check_validation_layer_support(entry: &ash::Entry) -> bool {
                 Ok(v) => v,
                 Err(e) => {
 
-                    CERROR!("{}",&e.to_string());
+                    CERROR("{}",&[&e.to_string()]);
 
                     return false;
 
@@ -132,7 +137,7 @@ pub fn check_validation_layer_support(entry: &ash::Entry) -> bool {
 
         if !found {
 
-            CWARN!("Didn't find layer {}",req_layer.to_owned());
+            CWARN("Didn't find layer {}",&[req_layer.to_owned()]);
 
             return false;
         }
@@ -144,3 +149,118 @@ pub fn check_validation_layer_support(entry: &ash::Entry) -> bool {
     true 
 
 }
+//
+//
+// ------------------------------------------------------------------------------------------------
+// Debug 
+//
+//
+///
+unsafe extern "system" fn vlk_debug_utils_callback(
+
+    severity :      vk::DebugUtilsMessageSeverityFlagsEXT,
+    type_:          vk::DebugUtilsMessageTypeFlagsEXT,
+    p_callback:     *const vk::DebugUtilsMessengerCallbackDataEXT,
+    _p_usr_data:    *mut c_void
+
+
+) -> vk::Bool32 {
+
+    let type_str = match type_ {
+
+        vk::DebugUtilsMessageTypeFlagsEXT::GENERAL => "VLK: [General]",
+        vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE => "VLK: [Performance]",
+        vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION => "VLK: [Validation]",
+        vk::DebugUtilsMessageTypeFlagsEXT::DEVICE_ADDRESS_BINDING => "VLK: [Device Address Binding]",
+        _ => { CFATAL("Unknown message type passed to the debug callback",&[]); 
+
+        // TODO: find a way to handle this situation
+        panic!()
+
+    }   
+
+
+    };
+
+    let msg = match CStr::from_ptr((*p_callback).p_message).to_str() {
+
+        Ok(m) => m,
+        Err(e) => {
+            
+            CERROR("Vulkan debug callback receive a message with invalid utf-8 char",&[]);
+
+            CWARN("Important debug info will be missing",&[]);
+            
+        
+            ""
+            
+        }
+
+
+    };
+
+    
+    match severity {
+
+        vk::DebugUtilsMessageSeverityFlagsEXT::ERROR =>    { CERROR("{}: {}",&[type_str,msg]); },
+        vk::DebugUtilsMessageSeverityFlagsEXT::INFO  =>    { CINFO("{}: {}",&[type_str,msg]);  },
+        vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE =>  { CDEBUG("{}: {}",&[type_str,msg]); },
+        _ => { CFATAL("Unknow debug severity passed to the debug callback",&[]); }
+
+    }
+
+    vk::FALSE
+
+}
+//
+//
+pub(crate) struct VlkDebugSys {
+
+    util_loader:    ash::extensions::ext::DebugUtils,
+    messenger:      vk::DebugUtilsMessengerEXT
+
+}
+
+//
+//
+pub(crate) fn set_debug_utils(entry:&ash::Entry,instance:&ash::Instance) -> Result<VlkDebugSys,EVlk> {
+
+    let dutils_loader = ash::extensions::ext::DebugUtils::new(entry, instance);
+
+    let msg_ci = vk::DebugUtilsMessengerCreateInfoEXT {
+
+        s_type: vk::StructureType::DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+        p_next: ptr::null(),
+        flags:  vk::DebugUtilsMessengerCreateFlagsEXT::empty(),
+        message_severity: 
+            vk::DebugUtilsMessageSeverityFlagsEXT::WARNING |
+            vk::DebugUtilsMessageSeverityFlagsEXT::ERROR |
+            vk::DebugUtilsMessageSeverityFlagsEXT::INFO |
+            vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE,
+        message_type: 
+            vk::DebugUtilsMessageTypeFlagsEXT::GENERAL |
+            vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE |
+            vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION |
+            vk::DebugUtilsMessageTypeFlagsEXT::DEVICE_ADDRESS_BINDING,
+        
+        pfn_user_callback: Some(vlk_debug_utils_callback),
+        p_user_data: ptr::null_mut()
+
+
+    };
+
+    let utils_messenger = unsafe {
+        match dutils_loader.create_debug_utils_messenger(&msg_ci, None) {
+
+            Ok(m) => m,
+            Err(e) => return Err(EVlk::DEBUG_UTILS(e.to_string()))
+
+        }
+    };
+
+    Ok( VlkDebugSys { util_loader: dutils_loader, messenger: utils_messenger } )
+
+
+}
+//
+

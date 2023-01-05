@@ -53,7 +53,7 @@ const TAB_MESSAGE: &str = "\n                       "; // 23 columns of whitespa
 // TODO: create functions for disable/enable logging
 //
 /// creates and sends a log messages through out the Engine
-pub(crate) struct LogSystem {
+pub struct LogSystem {
 
     queue:      LogQueue,
     init:       bool,
@@ -81,7 +81,8 @@ impl LogSystem {
         //
         self.init = true;
         // add the initialize log
-        crate::CTRACE!("Start the log subsystem");
+        //crate::CTRACE!("Start the log subsystem");
+
         //
         //    
     }
@@ -93,8 +94,10 @@ impl LogSystem {
     /// 
     /// * log - a log entry to be added to the queue
     /// 
-    fn push_log(&mut self,level: Level,msg: &str) { 
+    pub fn push_log(&mut self,level: Level,msg: &str) { 
         //
+
+
         // check to make sure that the log subsystem is initialized
         if !self.is_init(){
             // TODO: found a better solution because the log subsystem
@@ -198,9 +201,15 @@ pub fn end() {
 /// Initialize the log subsystem 
 pub fn init() {
     //
+
+
     match LOG_SUBSYSTEM.lock() {
         
-        Ok(mut sys) => sys.initialize(),
+        Ok(mut sys) =>{
+
+            sys.initialize();
+        
+        },
         
         Err(err) => {
 
@@ -340,7 +349,7 @@ impl LogQueue {
 //
 //
 /// Store a log entry 
-pub(crate) struct Log{ content:String }
+pub struct Log{ content:String }
 //
 impl Log{
     //
@@ -351,7 +360,7 @@ impl Log{
     /// * 'level'   - type of log entry
     /// * 'message' - colored message that the log entry should show
     /// 
-    pub(crate) fn new(level:Level, message:ColoredString) -> Self {
+    pub fn new(level:Level, message:ColoredString) -> Self {
         //
         // format version message 
         #[allow(unused_assignments)]
@@ -435,17 +444,9 @@ pub enum Level{
 // Macro declaration
 //
 /// boilerplate code for the logger macros
-pub(crate) fn push_log(msg:&str,lvl:Level) {
+pub fn push_log(msg:&str,lvl:Level) {
 
-    match LOG_SUBSYSTEM.lock() {
-
-        Ok(mut sys) => sys.push_log(lvl, msg),
-        Err(_) => {
-
-            //TODO: find a solution to this situation
-        }
-
-    }
+    LOG_SUBSYSTEM.lock().unwrap().push_log(lvl,msg);
     //
 }
 //
@@ -554,6 +555,69 @@ pub fn validate_msg(msg: &str,args:&[&str]) -> String {
 }
 //
 //
+pub fn CFATAL(msg:&str,args:&[&str]) {
+
+    let c = validate_msg(msg, args);
+
+    push_log("test", Level::FATAL);
+
+}
+//
+//
+pub fn CERROR(msg:&str,args:&[&str]) {
+
+    let c = validate_msg(msg, args);
+
+    push_log(msg, Level::ERROR);
+
+}
+//
+//
+pub fn CWARN(msg:&str,args:&[&str]) {
+
+    let c = validate_msg(msg, args);
+
+    push_log(msg, Level::WARN);
+
+}
+//
+//
+pub fn CINFO(msg:&str,args:&[&str]) { 
+
+    let c = validate_msg(msg, args);
+
+    push_log(msg, Level::WARN);
+
+
+}
+//
+//
+pub fn CDEBUG(msg:&str,args:&[&str]) {
+
+    let c = validate_msg(msg, args);
+
+    push_log(msg, Level::WARN);
+
+
+}
+//
+//
+pub fn CTRACES(msg:&str,args:&[&str]) {
+
+    let c = validate_msg(msg, args);
+
+    push_log(&c, Level::TRACE);
+
+}
+//
+pub fn CTRACE(msg:&str) {
+
+    push_log(msg, Level::TRACE);
+
+}
+//
+//
+//
 #[macro_export]
 macro_rules! CFATAL {
     //
@@ -574,7 +638,7 @@ macro_rules! CFATAL {
         push_log(validate_msg($fmt_string, &[$($arg),*]).as_str(),FATAL);
 
             
-    }
+    };
     //
 }
 //
@@ -618,12 +682,12 @@ macro_rules! CWARN {
     //
     ($fmt_string:expr, $( $arg:expr ),*) => {
 
-        use crate::core::logs::{validate_msg,Level::WARN};
+        use crate::core::logs::{validate_msg,Level::WARN,push_log};
 
         push_log(validate_msg($fmt_string, &[$($arg),*]).as_str(),WARN);
 
             
-    }
+    };
     //
 }
 //
@@ -647,7 +711,7 @@ macro_rules! CINFO {
         push_log(validate_msg($fmt_string, &[$($arg),*]).as_str(),INFO);
 
             
-    }
+    };
     //
 }
 //
@@ -669,7 +733,7 @@ macro_rules! CDEBUG {
 
         push_log(validate_msg($fmt_string, &[$($arg),*]).as_str(),DEBUG);
        
-    }
+    };
     //
 }
 //
@@ -681,7 +745,10 @@ macro_rules! CTRACE {
 
         use crate::core::logs::{push_log,Level::TRACE};
 
+
         push_log($fmt_string,TRACE);
+
+        
 
     };
     //
@@ -692,7 +759,7 @@ macro_rules! CTRACE {
         push_log(validate_msg($fmt_string, &[$($arg),*]).as_str(),TRACE);
 
             
-    }
+    };
     //
 }
 //

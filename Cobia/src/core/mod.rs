@@ -1,6 +1,6 @@
 
 
-pub(crate) mod logs;
+pub mod logs;
 pub(crate) mod application;
 
 
@@ -35,7 +35,7 @@ mod test {
         #[should_panic]
         fn not_initialized() {
 
-            push_log("not initialize before calling",Level::FATAL)
+            push_log("not initialize before calling",Level::FATAL);
 
         }
 
