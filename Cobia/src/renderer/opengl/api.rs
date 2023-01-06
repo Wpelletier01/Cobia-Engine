@@ -4,7 +4,7 @@ use std::ffi::{CString,c_void};
 use std::ptr;
 
 use super::EOpenGL;
-use crate::CERROR;
+use crate::core::logs::{CERRORS};
 use std::os::raw::{c_uint,c_int,c_char};
 //
 //
@@ -355,8 +355,8 @@ pub(crate) fn get_shader_info_log(shader_id:&u32,mut info_log:Vec<u8>,mut size:i
 
     let msg = String::from_utf8(info_log).map_err(|e|
         {
-            CERROR!("Unable to convert vec to string that describe error for shader compilation Reason: {}",
-            e.to_string().as_str());
+            CERRORS("Unable to convert vec to string that describe error for shader compilation Reason: {}",
+            &[&e.to_string()]);
         }
     ).unwrap();
 

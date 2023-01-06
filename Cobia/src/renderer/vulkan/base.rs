@@ -11,8 +11,9 @@ use super::EVlk;
 use super::utils;
 
 
-use crate::core::logs::{CTRACE,CDEBUG,CERROR,CWARN,CTRACES,CFATAL,CINFO};
+use crate::core::logs::{CDEBUG,CERROR,CERRORS,CWARN,CTRACES,CFATAL,CINFO, CFATALS, CWARNS, CINFOS, CDEBUGS};
 use crate::define::{VLK_API_VERSION,VLK_ENGINE_VERSION,VLK_APP_VERSION};
+use crate::renderer::vulkan::base;
 //
 //
 // ------------------------------------------------------------------------------------------------
@@ -21,6 +22,7 @@ use crate::define::{VLK_API_VERSION,VLK_ENGINE_VERSION,VLK_APP_VERSION};
 //
 pub(crate) fn create_instance(app_name:&str,entry: &ash::Entry) -> Result<ash::Instance,EVlk> {
 
+    
     let c_app_name = match CString::new(app_name) {
 
         Ok(cstr) => cstr,
@@ -61,6 +63,8 @@ pub(crate) fn create_instance(app_name:&str,entry: &ash::Entry) -> Result<ash::I
 
     };
 
+    CDEBUG("Initializing info structure done");
+
     unsafe {
         
         match entry.create_instance(&create_info, None) {
@@ -87,7 +91,7 @@ pub fn check_validation_layer_support(entry: &ash::Entry) -> bool {
         Ok(v) => v,
         Err(e) => {
 
-            CFATAL("Unable to enumerate layer properties because: {}",&[&e.to_string()]);
+            CFATALS("Unable to enumerate layer properties because: {}",&[&e.to_string()]);
 
             return false;
 
@@ -98,7 +102,7 @@ pub fn check_validation_layer_support(entry: &ash::Entry) -> bool {
 
     if layer_properties.len() <= 0 {
 
-        CERROR("No available layer",&[]);
+        CERROR("No available layer");
 
         return false;
 
@@ -116,7 +120,7 @@ pub fn check_validation_layer_support(entry: &ash::Entry) -> bool {
                 Ok(v) => v,
                 Err(e) => {
 
-                    CERROR("{}",&[&e.to_string()]);
+                    CERRORS("{}",&[&e.to_string()]);
 
                     return false;
 
@@ -137,7 +141,7 @@ pub fn check_validation_layer_support(entry: &ash::Entry) -> bool {
 
         if !found {
 
-            CWARN("Didn't find layer {}",&[req_layer.to_owned()]);
+            CWARNS("Didn't find layer {}",&[req_layer.to_owned()]);
 
             return false;
         }
@@ -172,7 +176,7 @@ unsafe extern "system" fn vlk_debug_utils_callback(
         vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE => "VLK: [Performance]",
         vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION => "VLK: [Validation]",
         vk::DebugUtilsMessageTypeFlagsEXT::DEVICE_ADDRESS_BINDING => "VLK: [Device Address Binding]",
-        _ => { CFATAL("Unknown message type passed to the debug callback",&[]); 
+        _ => { CFATAL("Unknown message type passed to the debug callback"); 
 
         // TODO: find a way to handle this situation
         panic!()
@@ -187,9 +191,9 @@ unsafe extern "system" fn vlk_debug_utils_callback(
         Ok(m) => m,
         Err(e) => {
             
-            CERROR("Vulkan debug callback receive a message with invalid utf-8 char",&[]);
+            CERROR("Vulkan debug callback receive a message with invalid utf-8 char");
 
-            CWARN("Important debug info will be missing",&[]);
+            CWARN("Important debug info will be missing");
             
         
             ""
@@ -202,10 +206,10 @@ unsafe extern "system" fn vlk_debug_utils_callback(
     
     match severity {
 
-        vk::DebugUtilsMessageSeverityFlagsEXT::ERROR =>    { CERROR("{}: {}",&[type_str,msg]); },
-        vk::DebugUtilsMessageSeverityFlagsEXT::INFO  =>    { CINFO("{}: {}",&[type_str,msg]);  },
-        vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE =>  { CDEBUG("{}: {}",&[type_str,msg]); },
-        _ => { CFATAL("Unknow debug severity passed to the debug callback",&[]); }
+        vk::DebugUtilsMessageSeverityFlagsEXT::ERROR =>    { CERRORS("{}: {}",&[type_str,msg]); },
+        vk::DebugUtilsMessageSeverityFlagsEXT::INFO  =>    { CINFOS("{}: {}",&[type_str,msg]);  },
+        vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE =>  { CDEBUGS("{}: {}",&[type_str,msg]); },
+        _ => { CFATAL("Unknown debug severity passed to the debug callback"); }
 
     }
 
@@ -216,8 +220,8 @@ unsafe extern "system" fn vlk_debug_utils_callback(
 //
 pub(crate) struct VlkDebugSys {
 
-    util_loader:    ash::extensions::ext::DebugUtils,
-    messenger:      vk::DebugUtilsMessengerEXT
+    pub util_loader:    ash::extensions::ext::DebugUtils,
+    pub messenger:      vk::DebugUtilsMessengerEXT
 
 }
 
@@ -263,4 +267,187 @@ pub(crate) fn set_debug_utils(entry:&ash::Entry,instance:&ash::Instance) -> Resu
 
 }
 //
+//
+// ------------------------------------------------------------------------------------------------
+// Physical devices
+//
+//
+pub(crate) fn get_physical_devices(inst:&ash::Instance) -> Result<Vec<vk::PhysicalDevice>,EVlk> {
 
+    let devs = unsafe {
+        
+        match inst.enumerate_physical_devices() {
+
+            Ok(d) => d,
+            Err(e) => return Err(EVlk::PHYSICAL_DEVICES_ENUM(e.to_string()))
+
+        }
+        
+    };
+
+    let mut suitable:Vec<vk::PhysicalDevice> = Vec::new();
+
+
+    for dev in devs.iter() {
+
+        if base::is_pdevice_suitable(inst,dev) {
+
+            suitable.push(*dev);
+
+        }
+
+    }
+
+    Ok(suitable)
+
+}
+//
+//
+pub(crate) fn is_pdevice_suitable(inst:&ash::Instance,pdevice:&vk::PhysicalDevice) -> bool {
+
+    
+    // TODO: to finish 
+
+
+    true 
+
+}
+//
+//
+pub(crate) fn check_pdevice_family_queue(
+    inst:       &ash::Instance,
+    pdevice:    vk::PhysicalDevice) -> Option<u32> {
+
+    
+    // TODO: to finish
+    
+    None 
+
+}
+//
+//
+// ------------------------------------------------------------------------------------------------
+// Logical devices
+//
+//
+pub(crate) fn create_logical_device(
+    pdevice:    vk::PhysicalDevice,
+    inst:       &ash::Instance ) -> Result<ash::Device,EVlk> {
+
+    let qpriorities = [1.0_f32];
+
+    // TODO: to finish
+    let physical_device_features = vk::PhysicalDeviceFeatures {
+        ..Default::default() // default just enable no feature.
+    };
+
+
+    let qcreate_info = vk::DeviceQueueCreateInfo {
+
+        s_type:                 vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
+        p_next:                 ptr::null(),
+        flags:                  vk::DeviceQueueCreateFlags::empty(),
+        queue_family_index:     0,
+        p_queue_priorities:     qpriorities.as_ptr(),
+        queue_count:            qpriorities.len() as u32,
+
+    };
+
+    let device_info = vk::DeviceCreateInfo {
+
+        s_type:                     vk::StructureType::DEVICE_CREATE_INFO,
+        p_next:                     ptr::null(),
+        flags:                      vk::DeviceCreateFlags::empty(),
+        queue_create_info_count:    1,
+        p_queue_create_infos:       &qcreate_info,
+        enabled_layer_count:        0,
+        pp_enabled_layer_names:     ptr::null(),
+        enabled_extension_count:    0,
+        pp_enabled_extension_names: ptr::null(),
+        p_enabled_features:         &physical_device_features
+
+    };
+
+    let device = unsafe {
+
+        match inst.create_device(pdevice, &device_info, None) {
+
+            Ok(d) => d,
+            Err(e) => return Err(EVlk::DEVICE(e.to_string()))
+
+        }
+        
+    };
+
+    Ok(device)
+
+
+}
+//
+//
+// ------------------------------------------------------------------------------------------------
+// Window Surface 
+//
+//
+
+pub(crate) struct VSurface {
+
+    pub(crate) surface: vk::SurfaceKHR,
+    pub(crate) loader:  ash::extensions::khr::Surface,
+
+
+}
+//
+//
+#[cfg(target_os = "linux")]
+pub(crate) fn create_window_surface(
+    inst:   &ash::Instance,
+    entry:  &ash::Entry,
+    window: &winit::window::Window ) -> Result<VSurface,EVlk> {
+
+    use winit::platform::unix::WindowExtUnix;
+    use ash::extensions::khr::XlibSurface;
+
+    let x11_display = match window.xlib_display() {
+
+        Some(d) => d,
+        None => return Err(EVlk::SURFACE("Current display session doesn't use xlib".to_string()))
+
+    };
+
+    let x11_window = match window.xlib_window() {
+
+        Some(d) => d,
+        None => return Err(EVlk::SURFACE("Current display session doesn't use xlib".to_string()))
+
+    };
+
+
+    let x11_create_info = vk::XlibSurfaceCreateInfoKHR {
+
+        s_type: vk::StructureType::XLIB_SURFACE_CREATE_INFO_KHR,
+        p_next: ptr::null(),
+        flags:  Default::default(),
+        window: x11_window as vk::Window,
+        dpy: x11_display as *mut vk::Display
+
+    };
+
+    let xlib_surf_loader = XlibSurface::new(entry, inst);
+
+    let surf = unsafe { 
+        match xlib_surf_loader.create_xlib_surface(&x11_create_info, None) {
+
+            Ok(s) => s,
+            Err(e) => return Err(EVlk::SURFACE(e.to_string()))
+
+        }
+    
+    };
+
+    let surf_loader = ash::extensions::khr::Surface::new(entry, inst);
+
+
+    Ok(VSurface { surface: surf, loader: surf_loader} ) 
+
+}

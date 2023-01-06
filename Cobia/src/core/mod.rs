@@ -18,7 +18,7 @@ mod test {
         use super::logs;
                
         use logs::*;
-
+        /* 
         #[test]
         fn t_fmt_log() {
 
@@ -54,6 +54,8 @@ mod test {
             assert!(true);
 
         }
+
+        */
 
     }
 

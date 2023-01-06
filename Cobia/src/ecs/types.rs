@@ -8,11 +8,11 @@ use std::path::Path;
 use std::io::BufReader;
 use ShaderParser::ShaderFileInfo;
 
-use crate::{ECobia, CERROR};
+use crate::ECobia;
 use crate::renderer::primitives::*;
 use crate::renderer::opengl::buffer::{TBO,VAO,VBO,EBO};
 use crate::renderer::opengl::shader::{Source,Program};
-use crate::CWARN;
+use crate::core::logs::{CERRORS,CWARN};
 
 use super::EComponent;
 
@@ -262,7 +262,7 @@ fn load_png(cfile:&CFile) -> Result<CImage,EComponent> {
     // check if its an APNG file
     if reader.info().animation_control.is_some() {
 
-        CWARN!("doesn't support apng frame\nOnly the first frame will be taken");
+        CWARN("doesn't support apng frame\nOnly the first frame will be taken");
     
     }
 
@@ -943,7 +943,7 @@ impl GShaderProgram {
 
         if !fragment_shader.gsource.is_compiled() {
 
-            CWARN!("fragment shader passed is not compile. It will be");
+            CWARN("fragment shader passed is not compile. It will be");
 
             fragment_shader.gsource.compile()?;
 
@@ -951,7 +951,7 @@ impl GShaderProgram {
 
         if!vertex_shader.gsource.is_compiled() {
 
-            CWARN!("fragment shader passed is not compile. It will be");
+            CWARN("fragment shader passed is not compile. It will be");
 
             vertex_shader.gsource.compile()?;
 

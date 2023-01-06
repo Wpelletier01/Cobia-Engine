@@ -25,6 +25,7 @@ use thiserror::Error;
 /* 
 
     TODO: make error accepting more generic types
+    TODO: add log entry throughout 
 
 */
 //

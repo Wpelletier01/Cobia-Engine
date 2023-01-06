@@ -53,7 +53,7 @@ const TAB_MESSAGE: &str = "\n                       "; // 23 columns of whitespa
 // TODO: create functions for disable/enable logging
 //
 /// creates and sends a log messages through out the Engine
-pub struct LogSystem {
+struct LogSystem {
 
     queue:      LogQueue,
     init:       bool,
@@ -67,7 +67,7 @@ pub struct LogSystem {
 impl LogSystem {
     //
     /// Initialize the log subsystem
-    pub(crate) fn initialize(&mut self) { 
+    fn initialize(&mut self) { 
         //
         // they are all enable by default
         //
@@ -81,7 +81,7 @@ impl LogSystem {
         //
         self.init = true;
         // add the initialize log
-        //crate::CTRACE!("Start the log subsystem");
+        //CTRACE("Start the log subsystem");
 
         //
         //    
@@ -94,7 +94,7 @@ impl LogSystem {
     /// 
     /// * log - a log entry to be added to the queue
     /// 
-    pub fn push_log(&mut self,level: Level,msg: &str) { 
+    fn push_log(&mut self,level: Level,msg: &str) { 
         //
 
 
@@ -180,7 +180,7 @@ impl LogSystem {
 //
 //
 /// Drop the log system
-pub fn end() {
+fn end() {
     //
     match LOG_SUBSYSTEM.lock() {
 
@@ -234,7 +234,7 @@ pub fn init() {
 /// * level - the type of log
 /// * message - what the log says
 /// 
-pub(crate) fn fmt_log(level: Level, message: String) -> String{
+fn fmt_log(level: Level, message: String) -> String{
     //
     // level represent the index in the CLEVEL_STRING
     // " {TIME} {TYPE} {MESSAGE}"
@@ -256,7 +256,7 @@ pub(crate) fn fmt_log(level: Level, message: String) -> String{
 /// 
 /// * dur - Duration since Engine initialized
 /// 
-pub fn fmt_duration_log(dur:Duration) -> String {
+fn fmt_duration_log(dur:Duration) -> String {
 
     let mut secs = dur.as_secs_f32();
     let mut min:u32 = 0;
@@ -311,7 +311,7 @@ fn format_single_digit_value(value: u32) -> String {
 // Log Struct 
 //
 /// Vector that store every log entry
-pub struct LogQueue { content: Vec<Log> }
+struct LogQueue { content: Vec<Log> }
 //
 impl LogQueue {
     //
@@ -349,7 +349,7 @@ impl LogQueue {
 //
 //
 /// Store a log entry 
-pub struct Log{ content:String }
+struct Log{ content:String }
 //
 impl Log{
     //
@@ -360,7 +360,7 @@ impl Log{
     /// * 'level'   - type of log entry
     /// * 'message' - colored message that the log entry should show
     /// 
-    pub fn new(level:Level, message:ColoredString) -> Self {
+    fn new(level:Level, message:ColoredString) -> Self {
         //
         // format version message 
         #[allow(unused_assignments)]
@@ -444,7 +444,7 @@ pub enum Level{
 // Macro declaration
 //
 /// boilerplate code for the logger macros
-pub fn push_log(msg:&str,lvl:Level) {
+fn push_log(msg:&str,lvl:Level) {
 
     LOG_SUBSYSTEM.lock().unwrap().push_log(lvl,msg);
     //
@@ -513,12 +513,13 @@ pub fn validate_msg(msg: &str,args:&[&str]) -> String {
     // couple brackets
     if args.len() > nb_brackets {
 
-        crate::CFATAL!(
+        CFATALS(
             "the message:[ {} ] contains {} format bracket(s) but you have passed {} arguments ",
-            msg,
-            format!("{}",nb_brackets.clone()).as_str(),
-            format!("{}",&args.len()).as_str()
-        
+            &[
+                msg,
+                format!("{}",nb_brackets.clone()).as_str(),
+                format!("{}",&args.len()).as_str()
+            ]
         );
 
     }
@@ -555,69 +556,33 @@ pub fn validate_msg(msg: &str,args:&[&str]) -> String {
 }
 //
 //
-pub fn CFATAL(msg:&str,args:&[&str]) {
-
-    let c = validate_msg(msg, args);
-
-    push_log("test", Level::FATAL);
-
-}
+pub fn CFATAL(msg:&str) { push_log(msg, Level::FATAL); }
 //
+pub fn CFATALS(msg:&str,args:&[&str]) { push_log(&validate_msg(msg, args), Level::FATAL); }
 //
-pub fn CERROR(msg:&str,args:&[&str]) {
-
-    let c = validate_msg(msg, args);
-
-    push_log(msg, Level::ERROR);
-
-}
+pub fn CERROR(msg:&str) { push_log(msg, Level::ERROR); }
 //
+pub fn CERRORS(msg:&str,args:&[&str]) { push_log(&validate_msg(msg, args), Level::ERROR);}
 //
-pub fn CWARN(msg:&str,args:&[&str]) {
-
-    let c = validate_msg(msg, args);
-
-    push_log(msg, Level::WARN);
-
-}
+pub fn CWARN(msg:&str) { push_log(msg, Level::WARN);}
 //
+pub fn CWARNS(msg:&str,args:&[&str]) { push_log(&validate_msg(msg, args), Level::WARN);}
 //
-pub fn CINFO(msg:&str,args:&[&str]) { 
-
-    let c = validate_msg(msg, args);
-
-    push_log(msg, Level::WARN);
-
-
-}
+pub fn CINFO(msg:&str) { push_log(msg, Level::INFO); }
 //
+pub fn CINFOS(msg:&str,args:&[&str]) { push_log(&validate_msg(msg, args), Level::INFO);}
 //
-pub fn CDEBUG(msg:&str,args:&[&str]) {
-
-    let c = validate_msg(msg, args);
-
-    push_log(msg, Level::WARN);
-
-
-}
+pub fn CDEBUG(msg:&str) { push_log(msg, Level::DEBUG); }
 //
+pub fn CDEBUGS(msg:&str,args:&[&str]) { push_log(&validate_msg(msg, args), Level::DEBUG);}
 //
-pub fn CTRACES(msg:&str,args:&[&str]) {
-
-    let c = validate_msg(msg, args);
-
-    push_log(&c, Level::TRACE);
-
-}
+pub fn CTRACE(msg:&str) { push_log(msg, Level::TRACE); }
 //
-pub fn CTRACE(msg:&str) {
-
-    push_log(msg, Level::TRACE);
-
-}
+pub fn CTRACES(msg:&str,args:&[&str]) { push_log(&validate_msg(msg, args), Level::TRACE);}
 //
 //
 //
+/*
 #[macro_export]
 macro_rules! CFATAL {
     //
@@ -762,6 +727,7 @@ macro_rules! CTRACE {
     };
     //
 }
+*/
 //
 //
 // ------------------------------------------------------------------------------------------------
