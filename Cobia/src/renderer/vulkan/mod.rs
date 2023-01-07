@@ -114,7 +114,7 @@ impl VlkSystem {
 
         let vlayer = validation_layer::ValidationLayer::new(REQUIRED_LAYERS);
 
-        vlayer.check(&entry);
+        //vlayer.check(&entry);
 
         let instance = create_instance(appname, &entry)?;
         
@@ -159,13 +159,7 @@ impl Drop for VlkSystem {
 
         unsafe {
             
-            self.device.destroy_device(None);
-            
-            self.debuger.util_loader.destroy_debug_utils_messenger(self.debuger.messenger, None);
-            
-            self.surface.loader.destroy_surface(self.surface.surface,None);
-            
-            self.instance.destroy_instance(None);
+      
             
 
         }

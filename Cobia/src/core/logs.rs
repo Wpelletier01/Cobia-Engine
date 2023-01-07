@@ -1,13 +1,17 @@
 #![allow(dead_code)]
+#![allow(non_snake_case)]
 
 use crate::define::{CRELEASE,FMIN_AS_SECONDS,FHOUR_AS_SECONDS};
 use super::application::get_prog_elapsed_time;
+use super::error_handler::{EGeneral, ECore};
 
-use std::sync::Mutex;
+
+use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
-use std::env;
 
 use colored::{Colorize,ColoredString};
+use error_stack::{Result, ResultExt};
+
 
 //
 //
@@ -19,7 +23,7 @@ use colored::{Colorize,ColoredString};
 //
 lazy_static::lazy_static! {
     //
-    static ref LOG_SUBSYSTEM: Mutex<LogSystem> = Mutex::new(
+    static ref LOG_SYSTEM: Mutex<LogSystem> = Mutex::new(
         LogSystem { 
             queue:      LogQueue::new(), 
             init:       false, 
@@ -178,48 +182,52 @@ impl LogSystem {
     //
 }
 //
-//
-/// Drop the log system
-fn end() {
-    //
-    match LOG_SUBSYSTEM.lock() {
+impl Drop for LogSystem {
 
-        Ok(sys) => drop(sys),
-        Err(err) => {
-
-            // TODO: found solution to this situation
-            println!("unable to destroy log system because: {}",err.to_string())
-
-        }
+    fn drop(&mut self) {
+        
+        let mutx = get_access_mutex().change_context(ECore::LOGGING)
+            .attach_printable("Cant drop the log system mutex")
+            .unwrap();
+        
+        drop(mutx)
 
     }
-    
 
 }
 //
 //
-/// Initialize the log subsystem 
-pub fn init() {
+/// Initialize the log system 
+pub fn init() -> Result<(),ECore> {
     //
 
+    get_access_mutex().change_context(ECore::LOGGING)
+        .attach_printable("Can't initialize the Log System")?
+        .initialize();
 
-    match LOG_SUBSYSTEM.lock() {
-        
-        Ok(mut sys) =>{
+    Ok(())
 
-            sys.initialize();
-        
-        },
-        
-        Err(err) => {
+}
+// 
+//
+/// remove boilerplate code for accessing the log system
+fn get_access_mutex() -> Result<MutexGuard<'static,LogSystem>,EGeneral> {
 
-            // TODO: found solution to this situation
-            println!("unable to destroy log system because: {}",err.to_string())
+    match LOG_SYSTEM.lock() {
 
-        }
-        
+        Ok(sys) => Ok(sys),
+        Err(e) => return Err(
+                EGeneral::MUTEX_ACCESS
+                    .as_report()
+                    .attach_printable(
+                        format!(
+                            "Can't access LOG_SYSTEM caused by {}",
+                            e.to_string()
+                        )
+                    )
+                )
     }
-    //
+
 }
 //
 //
@@ -333,7 +341,7 @@ impl LogQueue {
     fn push(&mut self,log:Log) {
         //
         if self.content.len() + 1 == LOG_MAX_QUEUE_SIZE {
-            
+        
             //TODO: implement something for remedy this situation
             //      I just dont have idea for now
             unimplemented!();
@@ -349,7 +357,7 @@ impl LogQueue {
 //
 //
 /// Store a log entry 
-struct Log{ content:String }
+struct Log{ level: Level, content:String }
 //
 impl Log{
     //
@@ -410,7 +418,7 @@ impl Log{
 
         }
 
-        Log{ content: msg}
+        Log{ level: level, content: msg}
         //
         //
     }
@@ -426,7 +434,7 @@ impl Log{
 // Level enum
 //
 #[repr(usize)]
-#[derive(PartialEq)]
+#[derive(PartialEq,Clone, Copy)]
 /// represents the index of the type of log in the const LEVEL_STRING
 pub enum Level{
 
@@ -441,14 +449,8 @@ pub enum Level{
 //
 //
 // ------------------------------------------------------------------------------------------------
-// Macro declaration
+// Log call functions 
 //
-/// boilerplate code for the logger macros
-fn push_log(msg:&str,lvl:Level) {
-
-    LOG_SUBSYSTEM.lock().unwrap().push_log(lvl,msg);
-    //
-}
 //
 //
 /// Slice the given string where brackets couple are founded
@@ -504,7 +506,7 @@ fn slice_brackets_str(msg:&str) -> (Vec<String>,usize){
 /// 
 /// * 'msg' - the string message to be validated
 /// * 'args' - the arguments to be validated and passed to the message
-pub fn validate_msg(msg: &str,args:&[&str]) -> String {
+fn validate_msg(msg: &str,args:&[&str]) -> String {
     //
     let (msg_sliced,nb_brackets) = slice_brackets_str(&msg);
     //
@@ -556,178 +558,284 @@ pub fn validate_msg(msg: &str,args:&[&str]) -> String {
 }
 //
 //
-pub fn CFATAL(msg:&str) { push_log(msg, Level::FATAL); }
-//
-pub fn CFATALS(msg:&str,args:&[&str]) { push_log(&validate_msg(msg, args), Level::FATAL); }
-//
-pub fn CERROR(msg:&str) { push_log(msg, Level::ERROR); }
-//
-pub fn CERRORS(msg:&str,args:&[&str]) { push_log(&validate_msg(msg, args), Level::ERROR);}
-//
-pub fn CWARN(msg:&str) { push_log(msg, Level::WARN);}
-//
-pub fn CWARNS(msg:&str,args:&[&str]) { push_log(&validate_msg(msg, args), Level::WARN);}
-//
-pub fn CINFO(msg:&str) { push_log(msg, Level::INFO); }
-//
-pub fn CINFOS(msg:&str,args:&[&str]) { push_log(&validate_msg(msg, args), Level::INFO);}
-//
-pub fn CDEBUG(msg:&str) { push_log(msg, Level::DEBUG); }
-//
-pub fn CDEBUGS(msg:&str,args:&[&str]) { push_log(&validate_msg(msg, args), Level::DEBUG);}
-//
-pub fn CTRACE(msg:&str) { push_log(msg, Level::TRACE); }
-//
-pub fn CTRACES(msg:&str,args:&[&str]) { push_log(&validate_msg(msg, args), Level::TRACE);}
-//
-//
-//
-/*
-#[macro_export]
-macro_rules! CFATAL {
-    //
-    //
-    ($fmt_string:expr) => {
+/// Fatal log with no arguments
+pub fn CFATAL(msg:&str) { 
+    
+    match get_access_mutex() {
 
-        use crate::core::logs::{push_log,Level::FATAL};
+        Ok(mut sys) => sys.push_log(Level::FATAL, msg),
+
+        Err(e) => {
+
+            //TODO: find a better solution 
+
+            eprintln!("{}",e.to_string())
+
+        }
+
+    }
+
+}
+//
+/// Fatal log with arguments
+pub fn CFATALS(msg:&str,args:&[&str]) {
+
+    match get_access_mutex() {
+
+        Ok(mut sys) => {
+
+            let v = validate_msg(msg, args);
+
+            sys.push_log(Level::FATAL,&v);
         
-        push_log($fmt_string,FATAL);
+        },
+
+        Err(e) => {
+
+            //TODO: find a better solution 
+
+            eprintln!("{}",e.to_string())
+
+        }
+
+    }
 
 
-    };
-    //
-    ($fmt_string:expr, $( $arg:expr ),*) => {
+}
+//
+/// Error log with no arguments
+pub fn CERROR(msg:&str) { 
+
+    match get_access_mutex() {
+
+        Ok(mut sys) => sys.push_log(Level::ERROR, msg),
+
+        Err(e) => {
+
+            //TODO: find a better solution 
+
+            eprintln!("{}",e.to_string())
+
+        }
+
+    }
+
+
+}
+//
+/// Error log with arguments
+pub fn CERRORS(msg:&str,args:&[&str]) { 
+
+    match get_access_mutex() {
+
+        Ok(mut sys) => {
+
+            let v = validate_msg(msg, args);
+
+            sys.push_log(Level::ERROR,&v);
         
-        use crate::core::logs::{push_log,validate_msg,Level::FATAL};
-      
-        push_log(validate_msg($fmt_string, &[$($arg),*]).as_str(),FATAL);
+        },
 
-            
-    };
-    //
+        Err(e) => {
+
+            //TODO: find a better solution 
+
+            eprintln!("{}",e.to_string())
+
+        }
+
+    }
+
 }
 //
-//
-#[macro_export]
-macro_rules! CERROR {
-    //
-    //
-    ($fmt_string:expr) => {
-        //
-        use crate::core::logs::{Level::ERROR,push_log};
-   
-        push_log($fmt_string,ERROR);
+/// Warn log with no arguments
+pub fn CWARN(msg:&str) { 
+
+    match get_access_mutex() {
+
+        Ok(mut sys) => sys.push_log(Level::WARN, msg),
+
+        Err(e) => {
+
+            //TODO: find a better solution 
+
+            eprintln!("{}",e.to_string())
+
+        }
+
+    }
 
 
-    };
-    //
-    ($fmt_string:expr, $( $arg:expr ),*) => {
-        //
-        use crate::core::logs::{push_log,validate_msg,Level::ERROR};
-            
-        push_log(validate_msg($fmt_string, &[$($arg),*]).as_str(),ERROR);
 
-            
-    };
-    //
 }
 //
-//
-#[macro_export]
-macro_rules! CWARN {
-    //
-    ($fmt_string:expr) => {
+/// Warn log with arguments
+pub fn CWARNS(msg:&str,args:&[&str]) { 
 
-        use crate::core::logs::{push_log,Level::WARN};
+    match get_access_mutex() {
 
-        push_log($fmt_string,WARN);
+        Ok(mut sys) => {
 
+            let v = validate_msg(msg, args);
 
-    };
-    //
-    ($fmt_string:expr, $( $arg:expr ),*) => {
-
-        use crate::core::logs::{validate_msg,Level::WARN,push_log};
-
-        push_log(validate_msg($fmt_string, &[$($arg),*]).as_str(),WARN);
-
-            
-    };
-    //
-}
-//
-//
-#[macro_export]
-macro_rules! CINFO {
-    //
-    ($fmt_string:expr) => {
-
-        use crate::core::logs::{send_log,Level::INFO};
-
-        push_log($fmt_string,INFO);
-
-
-    };
-    //
-    ($fmt_string:expr, $( $arg:expr ),*) => {
-
-        use crate::core::logs::{push_log,validate_msg,Level::INFO};
-
-        push_log(validate_msg($fmt_string, &[$($arg),*]).as_str(),INFO);
-
-            
-    };
-    //
-}
-//
-//
-#[macro_export]
-macro_rules! CDEBUG {
-    //
-    ($fmt_string:expr) => {
-
-        use crate::core::logs::{push_log,validate_msg,Level::DEBUG};
-
-        push_log($fmt_string,DEBUG);
-
-    };
-    //
-    ($fmt_string:expr, $( $arg:expr ),*) => {
-
-        use crate::core::logs::{push_log,validate_msg,Level::DEBUG};
-
-        push_log(validate_msg($fmt_string, &[$($arg),*]).as_str(),DEBUG);
-       
-    };
-    //
-}
-//
-//
-#[macro_export]
-macro_rules! CTRACE {
-    //
-    ($fmt_string:expr) => {
-
-        use crate::core::logs::{push_log,Level::TRACE};
-
-
-        push_log($fmt_string,TRACE);
-
+            sys.push_log(Level::WARN,&v);
         
+        },
 
-    };
-    //
-    ($fmt_string:expr, $( $arg:expr ),*) => {
+        Err(e) => {
 
-        use crate::core::logs::{push_log,validate_msg,Level::CTRACE};
+            //TODO: find a better solution 
 
-        push_log(validate_msg($fmt_string, &[$($arg),*]).as_str(),TRACE);
+            eprintln!("{}",e.to_string())
 
-            
-    };
-    //
+        }
+
+    }
+
+
+
 }
-*/
 //
+/// Info log with no arguments
+pub fn CINFO(msg:&str) { 
+
+    match get_access_mutex() {
+
+        Ok(mut sys) => sys.push_log(Level::INFO, msg),
+
+        Err(e) => {
+
+            //TODO: find a better solution 
+
+            eprintln!("{}",e.to_string())
+
+        }
+
+    }
+
+
+
+
+}
 //
-// ------------------------------------------------------------------------------------------------
+/// Info log with arguments
+pub fn CINFOS(msg:&str,args:&[&str]) {
+
+    match get_access_mutex() {
+
+        Ok(mut sys) => {
+
+            let v = validate_msg(msg, args);
+
+            sys.push_log(Level::INFO,&v);
+        
+        },
+
+        Err(e) => {
+
+            //TODO: find a better solution 
+
+            eprintln!("{}",e.to_string())
+
+        }
+
+    }
+
+
+
+}
+//
+/// Debug log with no arguments
+pub fn CDEBUG(msg:&str) {
+
+    match get_access_mutex() {
+
+        Ok(mut sys) => sys.push_log(Level::DEBUG, msg),
+
+        Err(e) => {
+
+            //TODO: find a better solution 
+
+            eprintln!("{}",e.to_string())
+
+        }
+
+    }
+
+}
+//
+/// Debug log with arguments
+pub fn CDEBUGS(msg:&str,args:&[&str]) {
+
+    match get_access_mutex() {
+
+        Ok(mut sys) => {
+
+            let v = validate_msg(msg, args);
+
+            sys.push_log(Level::DEBUG,&v);
+        
+        },
+
+        Err(e) => {
+
+            //TODO: find a better solution 
+
+            eprintln!("{}",e.to_string())
+
+        }
+
+    }
+
+
+
+}
+//
+/// Trace log with no arguments
+pub fn CTRACE(msg:&str) { 
+
+    match get_access_mutex() {
+
+        Ok(mut sys) => sys.push_log(Level::TRACE, msg),
+
+        Err(e) => {
+
+            //TODO: find a better solution 
+
+            eprintln!("{}",e.to_string())
+
+        }
+
+    }
+
+
+
+}
+//
+/// Trace log with arguments
+pub fn CTRACES(msg:&str,args:&[&str]) { 
+
+    match get_access_mutex() {
+
+        Ok(mut sys) => {
+
+            let v = validate_msg(msg, args);
+
+            sys.push_log(Level::TRACE,&v);
+        
+        },
+
+        Err(e) => {
+
+            //TODO: find a better solution  redesign
+
+            eprintln!("{}",e.to_string())
+
+        }
+
+    }
+
+
+
+}
+//

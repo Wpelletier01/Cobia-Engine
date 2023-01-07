@@ -23,8 +23,8 @@ pub fn get_prog_elapsed_time() -> Duration {
         Ok(clock) => clock.elapsed(),
         Err(e) => {
 
-            println!("unable to access the engine's clock because: {}", e.to_string());
-            println!("a duration value of 0 will be returned");
+            eprintln!("unable to access the engine's clock because: {}", e.to_string());
+            eprintln!("a duration value of 0 will be returned");
 
             Duration::new(0, 0)
 

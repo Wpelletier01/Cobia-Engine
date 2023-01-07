@@ -13,7 +13,7 @@ pub(crate) struct ValidationLayer {
 //
 impl ValidationLayer {
 
-    pub(crate) fn new(required_layer: [&str;1]) -> ValidationLayer { 
+    pub(crate) fn new(required_layer: [&'static str;1]) -> ValidationLayer { 
 
         ValidationLayer { required: required_layer, is_enabled: true }
  
