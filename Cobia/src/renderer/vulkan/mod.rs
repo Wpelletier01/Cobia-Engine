@@ -1,12 +1,26 @@
-
-pub mod base; 
-pub mod utils;
+#![allow(dead_code)]
 
 
-use crate::ECobia;
+pub(crate) mod utils;
+pub(crate) mod queue_family;
+pub(crate) mod debug;
+pub(crate) mod physical_device;
+pub(crate) mod logical_device;
+pub(crate) mod validation_layer;
+pub(crate) mod surface;
+pub(crate) mod swapchain;
+
+use std::ffi::CString;
+use std::ptr;
+
+
+use ash::vk;
 use thiserror::Error;
 
-use crate::core::logs::{CTRACE,CDEBUG};
+use crate::core::logs::{CFATALS};
+use crate::ECobia;
+use crate::core::logs::{CTRACE,CDEBUG,CERROR,CERRORS,CWARNS};
+use crate::define::{VLK_API_VERSION,VLK_ENGINE_VERSION,VLK_APP_VERSION};
 
 #[allow(non_camel_case_types)]
 #[derive(Error, Debug)]
@@ -31,11 +45,20 @@ pub enum EVlk {
     #[error("can't enumerate physical devices because: {0}")]
     PHYSICAL_DEVICES_ENUM(String),
 
-    #[error("cant create device because: {0}")]
-    DEVICE(String),
+    #[error("no physical device suitable for vulkan has been found")]
+    PHYSICAL_DEVICES_FOUND,
+
+    #[error("cant create logical device because: {0}")]
+    LOGIC_DEVICE(String),
 
     #[error("cant create a window surface because of: {0}")]
-    SURFACE(String)
+    SURFACE(String),
+
+    #[error("can't access surface data because: {0}")]
+    SURFACE_DATA(String),
+
+    #[error("cant create a swapchain because: {0}")]
+    SWAPCHAIN(String),
 
 } 
 
@@ -65,16 +88,17 @@ mod tests {
 }
 
 
-const REQUIRED_VALIDATION_LAYERS: [&str;1] = ["VK_LAYER_KHRONOS_validation"];
+const REQUIRED_LAYERS: [&str;1] = ["VK_LAYER_KHRONOS_validation"];
 
 pub(crate) struct VlkSystem {
 
-    entry:      ash::Entry,
-    instance:   ash::Instance,
-    debuger:    base::VlkDebugSys,
-    pdevices:   Vec<ash::vk::PhysicalDevice>,
-    device:     ash::Device,
-    surface:    base::VSurface
+    entry:          ash::Entry,
+    instance:       ash::Instance,
+    vlayer:         validation_layer::ValidationLayer,
+    debuger:        debug::VlkDebugSys,
+    pdevices:       Vec<ash::vk::PhysicalDevice>,
+    logical_device: logical_device::LogicDevice,
+    surface:        surface::VSurface
 
 }
 //
@@ -88,40 +112,42 @@ impl VlkSystem {
             ash::Entry::load().map_err(|e| EVlk::ENTRY(e.to_string()))?
         }; 
 
-        CTRACE("Start vulkan instance creation");
+        let vlayer = validation_layer::ValidationLayer::new(REQUIRED_LAYERS);
 
-        let instance = base::create_instance(appname, &entry)?;
+        vlayer.check(&entry);
+
+        let instance = create_instance(appname, &entry)?;
         
-        CTRACE("Successfully create a vulkan instance");
 
-        let vdebuger = base::set_debug_utils(&entry, &instance)?;
+        let vdebuger = debug::set_debug_utils(&entry, &instance)?;
 
+        
+        let pdevices = physical_device::get_physical_devices(&instance)?;
 
-        let pdevices = base::get_physical_devices(&instance)?;
+        // TODO: for now we just take the first pdevice in the vector 
+        // TODO: implement something later
+        let logic_device =  logical_device::LogicDevice::new(&instance, pdevices[0], &vlayer)?;
 
-        // TODO: 
-        let qdevice = base::create_logical_device(pdevices[0], &instance)?;
-
-        let vsurface = base::create_window_surface(&instance, &entry, window)?;
+        let vsurface = surface::create_window_surface(&instance, &entry, window)?;
 
         Ok(
             VlkSystem{
                 
-                entry:      entry,
-                instance:   instance,
-                debuger:    vdebuger,
-                pdevices:   pdevices,
-                device:     qdevice,
-                surface:    vsurface
+                entry:          entry,
+                vlayer:         vlayer,
+                instance:       instance,
+                debuger:        vdebuger,
+                pdevices:       pdevices,
+                logical_device: logic_device,
+                surface:        vsurface
 
             }
         )
 
 
     }
-
-
-   
+    //
+    //
 
     
 }
@@ -147,3 +173,65 @@ impl Drop for VlkSystem {
     }
 
 }
+//
+//
+// --------------------------------------------------------------------------------------------
+// Create an instance 
+// 
+//
+pub(crate) fn create_instance(app_name:&str,entry: &ash::Entry) -> Result<ash::Instance,EVlk> {
+
+    let c_app_name = match CString::new(app_name) {
+
+        Ok(cstr) => cstr,
+        Err(e) => return Err(EVlk::INSTANCE("app_name have a null character".to_string()))
+    
+    
+    };
+    
+        
+    let engine = CString::new("Cobia").unwrap();
+
+    let app_info = vk::ApplicationInfo {
+
+        s_type:                 vk::StructureType::APPLICATION_INFO,
+        p_next:                 ptr::null(),
+        p_application_name:     c_app_name.as_ptr(),
+        application_version:    VLK_APP_VERSION,
+        p_engine_name:          engine.as_ptr(),
+        engine_version:         VLK_ENGINE_VERSION,
+        api_version:            VLK_API_VERSION
+
+    }; 
+
+    let require_extensions = utils::required_extension_names();
+    
+        
+    
+    let create_info = vk::InstanceCreateInfo {
+
+        s_type: vk::StructureType::INSTANCE_CREATE_INFO,
+        p_next: ptr::null(),
+        flags:  vk::InstanceCreateFlags::empty(),
+        p_application_info: &app_info,
+        pp_enabled_layer_names: ptr::null(),
+        enabled_layer_count: 0,
+        pp_enabled_extension_names: require_extensions.as_ptr(),
+        enabled_extension_count: require_extensions.len() as u32,
+
+    };
+    
+    CDEBUG("Initializing info structure done");
+
+    unsafe {
+        
+        match entry.create_instance(&create_info, None) {
+
+            Ok(inst) => Ok(inst),
+            Err(e) => Err(EVlk::INSTANCE(e.to_string()))
+        }
+    } 
+    
+}
+//
+//

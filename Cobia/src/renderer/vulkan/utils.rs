@@ -13,6 +13,7 @@ use std::os::raw::c_char;
 use std::ffi::CStr;
 
 use crate::ECobia;
+use crate::core::logs::CERRORS;
 
 use super::EVlk;
 
@@ -46,7 +47,7 @@ pub fn required_extension_names() -> Vec<*const i8> {
 //
 //
 /// Helper function to convert [c_char; SIZE] to string
-pub fn vk_to_string(raw_string_array: &[c_char]) -> Result<&str,EVlk> {
+pub fn vk_to_string(raw_string_array: &[c_char]) -> &str {
 
     let raw_string = unsafe {
         let pointer = raw_string_array.as_ptr();
@@ -55,16 +56,21 @@ pub fn vk_to_string(raw_string_array: &[c_char]) -> Result<&str,EVlk> {
 
     match raw_string.to_str() {
 
-        Ok(string) => Ok(string),
-        Err(e) => return Err(
-            EVlk::from(ECobia::CONVERSION { 
-                from: "CStr".to_owned(), 
-                to: "str".to_owned(),
-                how: "translate str for vulkan".to_owned() 
-                }
-            )
+        Ok(string) => string,
+        Err(e) =>  {
+
+            CERRORS(
+                "{}", 
+                &[
+                    &ECobia::CONVERSION { 
+                        from: "[u8]".into(), 
+                        to: "&str".into(), 
+                        how: e.to_string()}.to_string()]
+            );
         
-        )
+            ""
+
+        }
 
     }
         
