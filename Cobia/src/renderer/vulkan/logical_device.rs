@@ -1,9 +1,11 @@
 
 
-use super::{EVlk, queue_family,validation_layer};
+use super::{queue_family,validation_layer};
+use crate::core::error_handler::EVlkApi;
 
 use std::ptr;
 
+use error_stack::Result;
 use ash::vk;
 
 pub(crate) struct LogicDevice {
@@ -19,7 +21,7 @@ impl LogicDevice {
     pub(crate) fn new(
         inst:       &ash::Instance,
         pdevice:    vk::PhysicalDevice,
-        vlayer:     &validation_layer::ValidationLayer ) -> Result<Self,EVlk> {
+        vlayer:     &validation_layer::ValidationLayer ) -> Result<Self,EVlkApi> {
 
         let indices = queue_family::find_queue_family(inst, pdevice);
 
@@ -37,7 +39,7 @@ impl LogicDevice {
         };
 
         let physical_device_features = vk::PhysicalDeviceFeatures {
-            ..Default::default() // default just enable no feature.
+            ..Default::default() // no features are enabled and maybe change in the future
         };
 
 
@@ -76,11 +78,8 @@ impl LogicDevice {
             match inst.create_device(pdevice , &dev_create_info, None) {
 
                 Ok(d) => d,
-                Err(e) => {
-
-                    return Err(EVlk::LOGIC_DEVICE(e.to_string()));
-                }
-
+                Err(e) => return Err(EVlkApi::LOGICAL_DEVICE.attach_printable_default(e))
+                
             }
 
         };

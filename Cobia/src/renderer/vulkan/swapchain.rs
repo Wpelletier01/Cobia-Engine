@@ -1,9 +1,14 @@
 
-use super::{EVlk,surface::VSurface,queue_family::QueueFamilyIndices};
+// TODO: add comment
+
+
+
+use super::{EVlkApi,Result,surface::VSurface,queue_family::QueueFamilyIndices};
 
 use std::ptr;
 
 use ash::vk;
+use error_stack::ResultExt;
 use num::clamp;
 
 struct VSwapChainInfo {
@@ -17,16 +22,23 @@ struct VSwapChainInfo {
 //
 impl VSwapChainInfo {
     
-    fn new(pdevice: vk::PhysicalDevice, surface: &VSurface) -> Result<Self,EVlk> {
+    fn new(pdevice: vk::PhysicalDevice, surface: &VSurface) -> Result<Self,EVlkApi> {
 
-        let capabilities = surface.get_pdev_surface_capabilities(pdevice)?;
+        let capabilities = surface.get_pdev_surface_capabilities(pdevice)
+            .change_context(EVlkApi::SWAPCHAIN)
+            .attach_printable("Can't access physical surface capabilities for swapchain info")?;
 
-        let formats =  surface.get_pdev_surface_format(pdevice)?;
+        let formats =  surface.get_pdev_surface_format(pdevice)
+            .change_context(EVlkApi::SWAPCHAIN)
+            .attach_printable("Can't access physical surface format for swapchain info")?;
 
-        let present_modes = surface.get_pdev_surface_present_mode(pdevice)?;
+        let present_modes = surface.get_pdev_surface_present_mode(pdevice)
+            .change_context(EVlkApi::SWAPCHAIN)
+            .attach_printable("Can't access physical surface present modes for swapchain info")?;
 
 
         Ok(VSwapChainInfo { 
+
             capabilities: capabilities,
             formats: formats,
             present_modes: present_modes 
@@ -51,6 +63,7 @@ pub(crate) struct VSwapChain {
     loader:     ash::extensions::khr::Swapchain,
     swapchain:  vk::SwapchainKHR,
     image:      Vec<vk::Image>,
+    image_view: Vec<vk::ImageView>,
     format:     vk::Format,
     extent:     vk::Extent2D,
 
@@ -67,9 +80,11 @@ impl VSwapChain {
         dev:            &ash::Device,
         pdev:           vk::PhysicalDevice,
         surface:        &VSurface,
-        qfamilyIndice:  &QueueFamilyIndices) -> Result<Self,EVlk> {
+        qfamilyIndice:  &QueueFamilyIndices) -> Result<Self,EVlkApi> {
     
-        let info = VSwapChainInfo::new(pdev, surface)?;
+        let info = VSwapChainInfo::new(pdev, surface)
+            .change_context(EVlkApi::SWAPCHAIN)
+            .attach_printable("Cant get info for swapchain creation")?;
 
         let findex = Self::choose_format(info.get_available_formats());
 
@@ -138,7 +153,7 @@ impl VSwapChain {
             match loader.create_swapchain(&create_info, None) {
 
                 Ok(s) => s,
-                Err(e) => return Err(EVlk::SWAPCHAIN(e.to_string()))
+                Err(e) => return Err(EVlkApi::SWAPCHAIN.attach_printable_default(e))
 
             }
         };
@@ -148,20 +163,24 @@ impl VSwapChain {
             match loader.get_swapchain_images(sc) {
 
                 Ok(img) => img,
-                Err(e) => return Err(EVlk::SWAPCHAIN(e.to_string()))
+                Err(e) => return Err(EVlkApi::SWAPCHAIN.attach_printable_default(e))
 
             }
 
         };
 
-        Ok( Self{ 
+        let sc_img_view = Self::create_image_views(dev, format.format, &sc_image)?;
 
-                loader:     loader,
-                swapchain:  sc,
-                format:     format.format,
-                extent:     extent,
-                image:      sc_image,
-                info:       info
+        Ok(Self{ 
+
+            loader:     loader,
+            swapchain:  sc,
+            format:     format.format,
+            extent:     extent,
+            image:      sc_image,
+            image_view: sc_img_view,
+            info:       info
+            
             }
         )
 
@@ -240,12 +259,81 @@ impl VSwapChain {
 
             }
 
-
-
         }
 
 
     }
+
+    
+    fn create_image_views(
+
+        dev:            &ash::Device,
+        surface_format: vk::Format,
+        images:         &Vec<vk::Image> ) -> Result<Vec<vk::ImageView>,EVlkApi> {
+
+            
+        let mut sc_img_view:Vec<vk::ImageView> = Vec::new();
+        
+        for img in images.iter() {
+
+            let create_info = vk::ImageViewCreateInfo {
+
+                s_type:      vk::StructureType::IMAGE_VIEW_CREATE_INFO,
+                p_next:      ptr::null(),
+                flags:       vk::ImageViewCreateFlags::empty(),
+                view_type:   vk::ImageViewType::TYPE_2D,
+                format:      surface_format,
+                components:  vk::ComponentMapping {
+
+                    r: vk::ComponentSwizzle::IDENTITY,
+                    g: vk::ComponentSwizzle::IDENTITY,
+                    b: vk::ComponentSwizzle::IDENTITY,
+                    a: vk::ComponentSwizzle::IDENTITY
+
+                },
+
+                subresource_range: vk::ImageSubresourceRange {
+
+                    aspect_mask: vk::ImageAspectFlags::COLOR,
+                    base_mip_level: 0,
+                    level_count: 1,
+                    base_array_layer: 0,
+                    layer_count: 1
+
+                },
+                image: *img
+
+            };
+
+            let img_view = unsafe {
+                
+                match dev.create_image_view(&create_info, None) {
+
+                    Ok(i_v) => i_v,
+                    Err(e) => return Err(
+                        EVlkApi::SWAPCHAIN
+                            .as_report()
+                            .attach_printable(format!(
+                                "unable to create an image view caused by: {}",
+                                e.to_string()
+                                )
+                            )
+
+                        )
+
+                }
+
+            };
+
+            sc_img_view.push(img_view);
+
+        }
+
+
+        Ok(sc_img_view)
+
+    }
+
 
 }
 

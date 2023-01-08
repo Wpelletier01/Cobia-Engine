@@ -12,10 +12,8 @@ use ash::extensions::khr::Surface;
 use std::os::raw::c_char;
 use std::ffi::CStr;
 
-use crate::ECobia;
-use crate::core::logs::CERRORS;
+use crate::core::logs::CERROR;
 
-use super::EVlk;
 
 //
 //
@@ -59,15 +57,9 @@ pub fn vk_to_string(raw_string_array: &[c_char]) -> &str {
         Ok(string) => string,
         Err(e) =>  {
 
-            CERRORS(
-                "{}", 
-                &[
-                    &ECobia::CONVERSION { 
-                        from: "[u8]".into(), 
-                        to: "&str".into(), 
-                        how: e.to_string()}.to_string()]
-            );
-        
+            CERROR("Can't convert c_char array to rust string");
+               
+    
             ""
 
         }

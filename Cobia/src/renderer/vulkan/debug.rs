@@ -1,12 +1,14 @@
 
+// TODO: add comment
 
 use std::ptr;
 use std::ffi::{c_void,CStr};
 
 use ash::vk;
+use error_stack::{Result};
 
-use crate::core::logs::{CFATAL,CERROR,CERRORS,CWARN,CINFOS,CDEBUGS};
-use super::EVlk;
+use crate::core::logs::*;
+use crate::core::error_handler::EVlkApi;
 
 
 
@@ -68,16 +70,74 @@ unsafe extern "system" fn vlk_debug_utils_callback(
 }
 //
 //
+//
 pub(crate) struct VlkDebugSys {
 
-    pub util_loader:    ash::extensions::ext::DebugUtils,
-    pub messenger:      vk::DebugUtilsMessengerEXT
+    util_loader:    ash::extensions::ext::DebugUtils,
+    messenger:      vk::DebugUtilsMessengerEXT
+
+}
+//
+impl VlkDebugSys {
+
+    pub(crate) fn new(entry:&ash::Entry,instance:&ash::Instance) -> Result<Self,EVlkApi> {
+
+
+        let dutils_loader = ash::extensions::ext::DebugUtils::new(entry, instance);
+
+        let msg_ci = vk::DebugUtilsMessengerCreateInfoEXT {
+
+            s_type: vk::StructureType::DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+            p_next: ptr::null(),
+            flags:  vk::DebugUtilsMessengerCreateFlagsEXT::empty(),
+            message_severity: 
+                vk::DebugUtilsMessageSeverityFlagsEXT::WARNING |
+                vk::DebugUtilsMessageSeverityFlagsEXT::ERROR |
+                vk::DebugUtilsMessageSeverityFlagsEXT::INFO |
+                vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE,
+            message_type: 
+                vk::DebugUtilsMessageTypeFlagsEXT::GENERAL |
+                vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE |
+                vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION |
+                vk::DebugUtilsMessageTypeFlagsEXT::DEVICE_ADDRESS_BINDING,
+            
+            pfn_user_callback: Some(vlk_debug_utils_callback),
+            p_user_data: ptr::null_mut()
+
+
+        };
+
+        let utils_messenger = unsafe {
+            match dutils_loader.create_debug_utils_messenger(&msg_ci, None) {
+
+                Ok(m) => m,
+                Err(e) => return Err(
+                    EVlkApi::DEBUG
+                        .as_report()
+                        .attach_printable(
+                            format!(
+                                "Could not create debug utils messenger because of {}", 
+                                e.to_string()
+                            )
+                        )
+                )
+
+            }
+        };
+
+        Ok( VlkDebugSys { util_loader: dutils_loader, messenger: utils_messenger } )
+
+
+    }
+
+
 
 }
 
+
 //
 //
-pub(crate) fn set_debug_utils(entry:&ash::Entry,instance:&ash::Instance) -> Result<VlkDebugSys,EVlk> {
+pub(crate) fn set_debug_utils(entry:&ash::Entry,instance:&ash::Instance) -> Result<VlkDebugSys,EVlkApi> {
 
     let dutils_loader = ash::extensions::ext::DebugUtils::new(entry, instance);
 
@@ -107,7 +167,7 @@ pub(crate) fn set_debug_utils(entry:&ash::Entry,instance:&ash::Instance) -> Resu
         match dutils_loader.create_debug_utils_messenger(&msg_ci, None) {
 
             Ok(m) => m,
-            Err(e) => return Err(EVlk::DEBUG_UTILS(e.to_string()))
+            Err(e) => return Err(EVlkApi::DEBUG.attach_printable_default(e))
 
         }
     };

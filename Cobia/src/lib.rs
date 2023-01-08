@@ -83,14 +83,3 @@ mod quick_test {
 
 }
 
-
-/// All the general error tha can be thrown at not only one module
-#[derive(Debug,Error)] 
-pub enum ECobia {
-
-    #[error("Can't convert {from} to {to} while accessing {how}")]
-    CONVERSION { from: String, to: String, how: String },
-
-
-
-}
