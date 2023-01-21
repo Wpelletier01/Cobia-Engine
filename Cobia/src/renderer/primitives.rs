@@ -1,7 +1,5 @@
 
-
-
-
+use bytemuck::{Pod,Zeroable};
 
 
 // float vertex  
@@ -14,18 +12,11 @@ pub type DVec3 = [f32;3];
 pub type Indice = u16;
 
 
-pub struct FVertex {
 
-    pub position:   FVec3,
-    pub normal:     FVec3,
-    pub tex_coord:  FVec2,
-
-}
-
-pub struct DVertex {
-
-    pub position:   DVec3,
-    pub normal:     DVec3,
-    pub tex_coord:  DVec2,
+#[repr(C)]
+#[derive(Clone,Copy,Debug,Default,Zeroable,Pod)]
+pub struct Vertex {
+    pub position:  FVec2
 
 }
+

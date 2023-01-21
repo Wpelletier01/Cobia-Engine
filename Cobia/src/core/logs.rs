@@ -44,8 +44,8 @@ const       LOG_MAX_QUEUE_SIZE: usize       = 300;
 const       MAX_LINE_LEN:       usize       = 100;
 const       CFAILURE:           u8          = 0;
 const       CSUCCESS:           u8          = 1;
-const       LEVEL_STRING:       [&str;6]    = [
-    "[FATAL]:","[ERROR]:","[WARN]: ","[INFO]: ", "[DEBUG]:","[TRACE]:"
+const       LEVEL_STRING:       [&str;7]    = [
+    "[FATAL]:","[ERROR]:","[WARN]: ","[INFO]: ", "[DEBUG]:","[TRACE]:","[VLK]:"
 ];
 // tab jump for if a log have multiple lines, they start all at the same position
 const TAB_MESSAGE: &str = "\n                       "; // 23 columns of whitespace
@@ -444,6 +444,7 @@ pub enum Level{
     INFO  = 3,
     DEBUG = 4,
     TRACE = 5,
+    VLK   = 6,
 
 }
 //
@@ -839,3 +840,23 @@ pub fn CTRACES(msg:&str,args:&[&str]) {
 
 }
 //
+/// Vulkan internal debug
+pub fn CVLK(msg:&str) {
+
+    match get_access_mutex() {
+
+        Ok(mut sys) => sys.push_log(Level::VLK, msg),
+
+        Err(e) => {
+
+            //TODO: find a better solution
+
+            eprintln!("{}",e.to_string())
+
+        }
+
+    }
+
+
+
+}

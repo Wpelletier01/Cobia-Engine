@@ -2,8 +2,7 @@
 #![allow(unused_imports)]
 
 use std::fmt;
-
-
+use std::fmt::write;
 
 use error_stack::{Context, IntoReport, Report, ResultExt};
 
@@ -145,10 +144,13 @@ impl Context for EGeneral {}
 // Core module (High Level error that occurs in the core module)
 // 
 //
+#[allow(non_camel_case_types)]
 #[derive(Debug)]
 pub enum ECore {
 
-    LOGGING 
+    LOGGING,
+    FILE,
+
 
 }
 //
@@ -160,7 +162,8 @@ impl fmt::Display for ECore {
 
 
             Self::LOGGING => write!(f, "Logging Module Error:"),
-
+            Self::FILE => write!(f, "Load File Module Error:"),
+           
 
         }
 
@@ -172,14 +175,56 @@ impl fmt::Display for ECore {
 impl Context for ECore {}
 //
 //
+// 
+#[derive(Debug,Clone, Copy)]
+pub enum EFile {
+
+    EXTENSION,
+    CONTENT,
+    PATH
+    
+}
+//
+impl EFile {
+
+    pub fn as_report(&self) -> Report<Self> { Report::new(*self)}
+
+}
+//
+impl fmt::Display for EFile {
+
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+
+            Self::EXTENSION =>  write!(f, "Extension Error"),
+            Self::CONTENT =>    write!(f, "Content Error"),
+            Self::PATH =>       write!(f, "Path error")
+
+        }
+    }
+
+}
+//
+impl Context for EFile {}
+//
+//
 // ------------------------------------------------------------------------------------------------
 // Rendering module (High Level error that occurs in the rendering module)
 // 
 //
-#[derive(Debug)]
+#[derive(Debug,Clone, Copy)]
 pub enum ERendering {
 
-    VLK
+    VLK_BASE,
+    SURFACE,
+    SYSTEM
+}
+//
+impl ERendering {
+    
+    pub fn as_report(&self) -> Report<Self> { Report::new(*self)}
+
+
 }
 //
 impl fmt::Display for ERendering { 
@@ -189,7 +234,9 @@ impl fmt::Display for ERendering {
 
         match self {
 
-            Self::VLK => write!(f,"Vulkan Rendering System")
+            Self::VLK_BASE => write!(f,"Vulkan Rendering System"),
+            Self::SURFACE =>  write!(f,"Window surface"),
+            Self::SYSTEM =>   write!(f,"Rendering System")
             
         }
 
@@ -208,14 +255,21 @@ impl Context for ERendering {}
 #[derive(Debug,Clone, Copy)]
 pub enum EVlkApi {
 
-    ENTRY,
+    LIBRARY,
     INSTANCE,
     DEBUG,
     PHYSICAL_DEVICE,
-    LOGICAL_DEVICE,
+    DEVICE,
     SURFACE,
     SWAPCHAIN,
-    GRAPHIC_PIPELINE
+    GRAPHIC_PIPELINE,
+    RENDERPASS,
+    FRAMEBUFFER,
+    QUEUE,
+    IMAGE,
+    SHADER,
+    MEMORY
+
 
 }
 //
@@ -237,15 +291,20 @@ impl fmt::Display for EVlkApi {
         
         match self {
 
-            Self::ENTRY => write!(f,    "Api Entry Point Error:"),
+            Self::LIBRARY => write!(f,"Api Entry Point Error:"),
             Self::INSTANCE => write!(f, "Instance Error:"),
-            Self::DEBUG => write!(f,    "Debug utils Error:"),
+            Self::DEBUG => write!(f, "Debug utils Error:"),
             Self::PHYSICAL_DEVICE => write!(f, "Physical Devices Error:"),
-            Self::LOGICAL_DEVICE => write!(f, "Logical Devices Error:"),
-            Self::SURFACE => write!(f,    "Vulkan Surface Error:"),
+            Self::DEVICE => write!(f, "Devices Error:"),
+            Self::SURFACE => write!(f, "Vulkan Surface Error:"),
             Self::SWAPCHAIN => write!(f, "Swapchain Error:"),
             Self::GRAPHIC_PIPELINE => write!(f, "Graphics Pipeline Error:"),
-
+            Self::SHADER => write!(f, "Shader Module Error:"),
+            Self::RENDERPASS => write!(f, "Renderpass Error:"),
+            Self::FRAMEBUFFER => write!(f,"FrameBuffer Error:"),
+            Self::QUEUE => write!(f,"Queue Error:"),
+            Self::MEMORY => write!(f,"Memory Error:")
+            
         }
     
     }
@@ -253,45 +312,6 @@ impl fmt::Display for EVlkApi {
 }
 //
 impl Context for EVlkApi {}
-//
-//
-// ------------------------------------------------------------------------------------------------
-// Vulkan Graphic Pipeline Error 
-//
-//
-#[allow(non_camel_case_types)]
-#[derive(Debug,Clone, Copy)]
-pub enum EVlkGraphicPipeline {
-
-    SHADER_MODULE,
-    PIPELINE,
-    RENDERPASS 
-
-}
-//
-impl EVlkGraphicPipeline {
-
-
-    pub fn as_report(&self) -> Report<Self> { Report::new(*self) }
-
-}
-//
-impl fmt::Display for EVlkGraphicPipeline {
-
-
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-
-            EVlkGraphicPipeline::SHADER_MODULE => write!(f,"Shader Entry error:"),
-            EVlkGraphicPipeline::PIPELINE => write!(f,"Input assembler error:"),
-            EVlkGraphicPipeline::RENDERPASS => write!(f,"Renderpass error:"),
-
-        }
-    }
-
-}
-//
-impl Context for EVlkGraphicPipeline {}
 //
 //
 // ------------------------------------------------------------------------------------------------

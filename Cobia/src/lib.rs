@@ -2,13 +2,11 @@
 #[allow(dead_code)]
 
 pub mod define;
-pub mod ecs;
+//pub mod ecs;
 pub mod renderer;
-
+pub mod event;
 pub mod core;
 
-
-use thiserror::Error;
 //
 //
 // ------------------------------------------------------------------------------------------------ 
