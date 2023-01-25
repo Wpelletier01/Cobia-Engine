@@ -1,7 +1,7 @@
 
 pub(crate) mod debug;
 
-use std::borrow::ToOwned;
+
 use std::sync::Arc;
 
 use vulkano::{
@@ -75,10 +75,6 @@ use vulkano::{
         }
     }
 
-
-
-
-
 };
 use error_stack::{Result, ResultExt};
 use winit::window::Window;
@@ -101,7 +97,7 @@ pub(crate) struct VlkBase {
     swapchain:          Arc<Swapchain>,
     pipeline:           Arc<GraphicsPipeline>,
     viewport:           Viewport,
-    framebuffers:        Vec<Arc<ImageView<SwapchainImage>>>,
+    framebuffer:        Vec<Arc<ImageView<SwapchainImage>>>,
     cmd_buffer_alloc:   GenericMemoryAllocator<Arc<FreeListAllocator>>
 
 }
@@ -174,7 +170,7 @@ impl VlkBase {
                 images:         imgs,
                                 pipeline,
                                 viewport,
-                                framebuffers,
+                framebuffer: framebuffers,
                                 cmd_buffer_alloc
 
             }
