@@ -2,10 +2,9 @@
 
 pub mod types;
 
-
 use types::CEvent;
 use types::input::*;
-use types::window::WindowEvent;
+use types::window::{WindowEvent,ResolutionChangeEvent};
 
 use winit::event::{
     KeyboardInput,
@@ -86,10 +85,7 @@ impl EventSystem {
         }
 
     }
-
-
-
-
+    
 }
 //
 //
@@ -149,8 +145,13 @@ impl EventQueue {
 // ------------------------------------------------------------------------------------------------
 // Converter function
 //
-//
-//
+/// Take a winit window event and convert it in a CEvent. Note that some of winit window event 
+/// are not window event in this engine
+///
+/// # Parameters
+/// 
+/// * wevent - winit window event to be convert
+/// 
 fn convert_window_event(wevent:WinitWindowEvent) -> CEvent {
 
     let win_event = match wevent {
@@ -248,10 +249,11 @@ fn convert_window_event(wevent:WinitWindowEvent) -> CEvent {
             return CEvent::Mouse(MouseEvent::MouseButton(mouse_ev))
 
 
-        }
-
-
-
+        },
+        WinitWindowEvent::ScaleFactorChanged { scale_factor, new_inner_size} => 
+            WindowEvent::ResolutionChange(ResolutionChangeEvent::new(scale_factor,(new_inner_size
+                .width,new_inner_size.height))),
+        
         _ => return CEvent::Unknown
 
 
@@ -261,6 +263,13 @@ fn convert_window_event(wevent:WinitWindowEvent) -> CEvent {
 
 }
 //
+//
+/// Convert the winit modifier state event struct to an CEvent
+///
+/// # Parameter 
+/// 
+/// * mstate - the winit event to be convert
+/// 
 fn modifier_event_converter(mstate:ModifiersState) -> CEvent {
 
     let mevent = if mstate.intersects(ModifiersState::CTRL) {
@@ -303,11 +312,26 @@ fn modifier_event_converter(mstate:ModifiersState) -> CEvent {
 
 }
 //
+/// take a winit keyboardInput event and convert it to a CEvent keyboard event with the help of 
+/// the virtual key field of the winit struct
+/// 
+/// # Parameters
+/// 
+/// * key_event: winit keyboard event to be convert
+/// 
 fn keyboard_event_converter(key_event:KeyboardInput) -> CEvent {
+    //
+    // convert the ElementState to ActionState
+    let action = match key_event.state {
 
+        ElementState::Pressed =>  StateAction::Press,
+        ElementState::Released => StateAction::Release,
 
+    };
+    //
+    // Get the key that has call an event with the virtual keycode from the winit struct
     let kevent = match key_event.virtual_keycode {
-
+        //
         Some(vcode) => {
 
             let key = match vcode {
@@ -360,10 +384,6 @@ fn keyboard_event_converter(key_event:KeyboardInput) -> CEvent {
                 VirtualKeyCode::RControl =>         Key::RCtrl,
                 VirtualKeyCode::LShift   =>         Key::LShift,
                 VirtualKeyCode::RShift   =>         Key::RShift,
-                // multimedia
-
-                // TODO: finish
-
                 // Number
                 VirtualKeyCode::Key0 =>             Key::N0,
                 VirtualKeyCode::Key1 =>             Key::N1,
@@ -423,40 +443,24 @@ fn keyboard_event_converter(key_event:KeyboardInput) -> CEvent {
                 VirtualKeyCode::Comma =>            Key::Comma,
                 VirtualKeyCode::Grave =>            Key::Grave,
                 VirtualKeyCode::Period =>           Key::Period,
-
+                //
                 _ =>                                Key::Unknown
 
             };
-
-            let action = match key_event.state {
-
-                ElementState::Pressed =>  StateAction::Press,
-                ElementState::Released => StateAction::Release,
-
-            };
-
+            
             KeyboardEvent::new(key,action)
 
         },
-        None => {
-
-            let action = match key_event.state {
-
-                ElementState::Pressed =>  StateAction::Press,
-                ElementState::Released => StateAction::Release,
-
-            };
-
-            KeyboardEvent::new(Key::Unknown,action)
-
-
-        }
+        None => KeyboardEvent::new(Key::Unknown,action)
+        
 
     };
 
     CEvent::Keyboard(kevent)
 
 }
+//
+//
 
 
 
