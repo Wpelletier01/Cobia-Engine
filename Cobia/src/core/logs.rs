@@ -71,7 +71,7 @@ struct LogSystem {
 impl LogSystem {
     //
     /// Initialize the log subsystem
-    fn initialize(&mut self) { 
+    fn initialize(&mut self) {
         //
         // they are all enable by default
         //

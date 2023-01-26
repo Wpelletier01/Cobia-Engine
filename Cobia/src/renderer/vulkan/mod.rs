@@ -1,6 +1,7 @@
 
 pub(crate) mod debug;
 
+use crate::core::logs::{CVLK};
 
 use std::sync::Arc;
 
@@ -104,33 +105,44 @@ pub(crate) struct VlkBase {
 //
 impl VlkBase {
 
-    pub(crate) fn init(
-        app_name:           &str,
-        app_version:        (u32,u32,u32),
-        surf:               &CSurface,
-        inst:               Arc<Instance> ) -> Result<Self,ERendering> {
-
+    pub(crate) fn init(surf:&CSurface,inst:Arc<Instance> ) -> Result<Self,ERendering> {
+        //
 
         let dcallback = debug::init_debug_utils(inst.clone())
             .map_err(|e| e.change_context(ERendering::VLK_BASE))?;
 
+        CVLK("Create callback for Debug message done");
+
         let (pdev,qfamilyindex) = Self::choose_pdevice(inst.clone(),surf.get_surface())
             .change_context(ERendering::VLK_BASE)?;
+
+        CVLK("Choosing physical device done");
+        CVLK("Choosing queue family index done");
 
         let (device,queues) = Self::create_device_and_queues(pdev.clone(), qfamilyindex)
             .map_err(|e| e.change_context(ERendering::VLK_BASE))?;
 
+        CVLK("Create device done");
+        CVLK("Create queue(s) done");
+
         let (sc,imgs) = Self::create_swapchain_and_image(device.clone(),surf.get_surface())
             .map_err(|e| e.change_context(ERendering::VLK_BASE))?;
+
+        CVLK("Create swapchain done");
+        CVLK("Create image done");
 
         // TODO: check for other shader types
         let svert = Self::load_vertex_shader(device.clone()).map_err(|e|
            e.change_context(ERendering::VLK_BASE)
         )?;
 
+        CVLK("Loading vertex shader done");
+
         let sfrag = Self::load_fragment_shader(device.clone()).map_err(|e|
             e.change_context(ERendering::VLK_BASE)
         )?;
+
+        CVLK("Loading fragment shader done");
 
         let pipeline = Self::create_graphic_pipeline(
             sc.clone(),
@@ -138,6 +150,9 @@ impl VlkBase {
             svert.clone(),
             device.clone()
         ).map_err(|e| e.change_context(ERendering::VLK_BASE))?;
+
+        CVLK("Creating graphics pipeline done");
+
 
         let mut viewport = Viewport {
 
@@ -157,6 +172,8 @@ impl VlkBase {
                 .attach_printable_default(e)
                 .change_context(ERendering::VLK_BASE)
         )?;
+
+        CVLK("Create command buffer allocator done");
 
         Ok(
             Self {
@@ -193,7 +210,8 @@ impl VlkBase {
 
     }
     //
-    pub(crate) fn get_device(&self) -> Arc<Device> { self.device.clone() }
+    pub(crate) fn get_device(&self) ->      Arc<Device> { self.device.clone() }
+    pub(crate) fn get_instance(&self) ->    Arc<Instance> { self.instance.clone() }
     //
     //
     //---------------------------------------------------------------------------------------------
@@ -203,6 +221,7 @@ impl VlkBase {
     fn choose_pdevice(
         inst:   Arc<Instance>,
         surf:   &Arc<Surface>) -> Result<(Arc<PhysicalDevice>,u32), EVlkApi> {
+
 
         let dev_ext = DeviceExtensions {
             // TODO: add other features needed with maybe conditions

@@ -303,7 +303,8 @@ impl fmt::Display for EVlkApi {
             Self::RENDERPASS => write!(f, "Renderpass Error:"),
             Self::FRAMEBUFFER => write!(f,"FrameBuffer Error:"),
             Self::QUEUE => write!(f,"Queue Error:"),
-            Self::MEMORY => write!(f,"Memory Error:")
+            Self::MEMORY => write!(f,"Memory Error:"),
+            Self::IMAGE => write!(f,"Image Error:")
             
         }
     
