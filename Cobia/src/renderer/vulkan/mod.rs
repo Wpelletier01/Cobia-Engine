@@ -1,7 +1,7 @@
 
 pub(crate) mod debug;
 
-use crate::core::logs::{CVLK};
+use crate::core::logs::{CDEBUG, CVLK};
 
 use std::sync::Arc;
 
@@ -68,10 +68,18 @@ use vulkano::{
         }
 
     },
+    command_buffer::{
+
+      allocator::StandardCommandBufferAllocator,
+
+    },
     memory::{
+
         allocator::{
             StandardMemoryAllocator,
+
             GenericMemoryAllocator,
+            GenericMemoryAllocatorCreateInfo,
             FreeListAllocator
         }
     }
@@ -99,7 +107,7 @@ pub(crate) struct VlkBase {
     pipeline:           Arc<GraphicsPipeline>,
     viewport:           Viewport,
     framebuffer:        Vec<Arc<ImageView<SwapchainImage>>>,
-    cmd_buffer_alloc:   GenericMemoryAllocator<Arc<FreeListAllocator>>
+    cmd_buffer_alloc:   StandardCommandBufferAllocator
 
 }
 //
@@ -132,22 +140,12 @@ impl VlkBase {
         CVLK("Create image done");
 
         // TODO: check for other shader types
-        let svert = Self::load_vertex_shader(device.clone()).map_err(|e|
-           e.change_context(ERendering::VLK_BASE)
-        )?;
 
-        CVLK("Loading vertex shader done");
-
-        let sfrag = Self::load_fragment_shader(device.clone()).map_err(|e|
-            e.change_context(ERendering::VLK_BASE)
-        )?;
 
         CVLK("Loading fragment shader done");
 
         let pipeline = Self::create_graphic_pipeline(
             sc.clone(),
-            sfrag.clone(),
-            svert.clone(),
             device.clone()
         ).map_err(|e| e.change_context(ERendering::VLK_BASE))?;
 
@@ -164,14 +162,10 @@ impl VlkBase {
 
         let framebuffers = window_size_dependent_setup(&imgs,&mut viewport);
 
-        let cmd_buffer_alloc = StandardMemoryAllocator::new(
+        let cmd_buffer_alloc = StandardCommandBufferAllocator::new(
             device.clone(),
             Default::default()
-        ).map_err(|e|
-            EVlkApi::MEMORY
-                .attach_printable_default(e)
-                .change_context(ERendering::VLK_BASE)
-        )?;
+        );
 
         CVLK("Create command buffer allocator done");
 
@@ -200,7 +194,7 @@ impl VlkBase {
         match self.queues.iter().next() {
 
             Some(q) => Ok(q),
-            None => return Err(
+            None => Err(
                 EVlkApi::QUEUE
                     .as_report()
                     .attach_printable("no queue could be found")
@@ -300,11 +294,7 @@ impl VlkBase {
             // TODO: add other features needed with maybe conditions
             khr_swapchain: true,
             khr_dynamic_rendering:
-            if pdevice.api_version() < Version::V1_3 {
-                true
-            } else {
-                false
-            },
+            pdevice.api_version() < Version::V1_3,
             ..DeviceExtensions::default()
         };
 
@@ -428,31 +418,8 @@ impl VlkBase {
 
     }
 
-    fn load_vertex_shader(dev:Arc<Device>) -> Result<Arc<ShaderModule>,EVlkApi> {
-
-        let s = VertexShader::load(dev).map_err(|e|
-            EVlkApi::SHADER.attach_printable_default(e)
-        )?;
-
-        Ok(s)
-
-    }
-
-    fn load_fragment_shader(dev:Arc<Device>) -> Result<Arc<ShaderModule>,EVlkApi> {
-
-        let s = VertexShader::load(dev).map_err(|e|
-            EVlkApi::SHADER.attach_printable_default(e)
-
-        )?;
-
-        Ok(s)
-
-    }
-
     fn create_graphic_pipeline(
         swapchain:Arc<Swapchain>,
-        fragment_shader: Arc<ShaderModule>,
-        vertex_shader:   Arc<ShaderModule>,
         dev: Arc<Device>
     ) -> Result<Arc<GraphicsPipeline>, EVlkApi> {
 
@@ -466,6 +433,26 @@ impl VlkBase {
 
 
         };
+
+
+
+        let vertex_shader = match Vs::load(dev.clone()) {
+
+            Ok(s) => s,
+            Err(e) => return Err(EVlkApi::SHADER.attach_printable_default(e))
+
+        };
+
+        CDEBUG("Vertex shader loaded");
+
+        let fragment_shader = match Fs::load(dev.clone()) {
+
+            Ok(s) => s,
+            Err(e) => return Err(EVlkApi::SHADER.attach_printable_default(e))
+
+        };
+
+        CDEBUG("Fragment shader loaded");
 
         let pipeline = GraphicsPipeline::start()
             .render_pass(graphic_pipeline_info)
@@ -507,7 +494,7 @@ impl VlkBase {
 }
 //
 //
-mod VertexShader {
+mod Vs {
     vulkano_shaders::shader! {
 
         ty: "vertex",
@@ -518,7 +505,7 @@ mod VertexShader {
 }
 //
 //
-mod FragmentShader {
+mod Fs {
 
     vulkano_shaders::shader! {
 

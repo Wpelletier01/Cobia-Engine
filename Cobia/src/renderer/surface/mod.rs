@@ -1,6 +1,6 @@
 // TODO: add comment
 
-use crate::core::logs::{CDEBUGS,CINFO};
+use crate::core::logs::{CDEBUG, CDEBUGS, CINFO, CTRACE};
 use crate::core::error_handler::ERendering;
 
 use winit::window::{Window, WindowBuilder};
@@ -42,12 +42,13 @@ impl CSurface {
         let winit_win = WindowBuilder::new()
             .with_title(DEFAULT_TITLE)
             .with_inner_size(LogicalSize::new(DEFAULT_WIDTH,DEFAULT_HEIGHT));
-        
+
         CDEBUGS(
-            "Create window builder with default value. Title: {} width: {} height",
+            "Create window builder with default value. Title: {} width: {} height: {}",
             &[DEFAULT_TITLE,&DEFAULT_WIDTH.to_string(),&DEFAULT_HEIGHT.to_string()]
         );
-        
+
+
         let win =  winit_win
             .build_vk_surface(&eloop,inst)
             .map_err(|e|ERendering::SURFACE

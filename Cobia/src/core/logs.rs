@@ -11,8 +11,35 @@ use std::time::Duration;
 
 use colored::{Colorize,ColoredString};
 use error_stack::{Result, ResultExt};
+//
+//
+#[cfg(test)]
+mod test {
+
+    use super::{init,CDEBUGS};
+
+    #[test]
+    fn logs_with_argument() {
+
+        init();
+
+        CDEBUGS("Test with one value {}" ,&[&1.to_string()]);
+        CDEBUGS("Test with two value {} {}",&[&1.to_string(),&2.to_string()]);
+        CDEBUGS("Test with three value {} {} {}",&[&1.to_string(),&2.to_string(),&3.to_string()]);
+
+    }
+
+    #[test]
+    fn log_with_to_much_arg() {
+
+        init();
+
+        CDEBUGS("1 {} 2 {} and 3",&["test","test","One more"]);
+
+    }
 
 
+}
 //
 //
 // TODO: add function to write the logs to a file  
@@ -45,7 +72,7 @@ const       MAX_LINE_LEN:       usize       = 100;
 const       CFAILURE:           u8          = 0;
 const       CSUCCESS:           u8          = 1;
 const       LEVEL_STRING:       [&str;7]    = [
-    "[FATAL]:","[ERROR]:","[WARN]: ","[INFO]: ", "[DEBUG]:","[TRACE]:","[VLK]:"
+    "[FATAL]:","[ERROR]:","[WARN]: ","[INFO]: ", "[DEBUG]:","[TRACE]:","[VLK]:  "
 ];
 // tab jump for if a log have multiple lines, they start all at the same position
 const TAB_MESSAGE: &str = "\n                       "; // 23 columns of whitespace
@@ -511,18 +538,15 @@ fn validate_msg(msg: &str,args:&[&str]) -> String {
     //
     let (msg_sliced,nb_brackets) = slice_brackets_str(&msg);
     //
-    //    
     // validate that the number of arguments passed are the same as the number of
     // couple brackets
     if args.len() > nb_brackets {
 
-        CFATALS(
+        panic!(
             "the message:[ {} ] contains {} format bracket(s) but you have passed {} arguments ",
-            &[
-                msg,
-                format!("{}",nb_brackets.clone()).as_str(),
-                format!("{}",&args.len()).as_str()
-            ]
+            msg,
+            nb_brackets,
+            args.len()
         );
 
     }
@@ -538,17 +562,11 @@ fn validate_msg(msg: &str,args:&[&str]) -> String {
             f_msg = format!("{}{}",f_msg,slice);
 
         }   
+        else if args.len() > iter_brk as usize {
 
-        else {
+            f_msg = format!("{}{}",f_msg,args[iter_brk]);
 
-            if args.len() - 1 >= iter_brk as usize {
-       
-                f_msg = format!("{}{}",f_msg,args[iter_brk]);
-
-                iter_brk += 1;
-            }
-             
-
+            iter_brk += 1;
         }
 
     }

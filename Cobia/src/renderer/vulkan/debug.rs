@@ -1,4 +1,7 @@
 
+// TODO: add comment
+// TODO: clean log message
+
 
 use super::{EVlkApi,Result};
 use crate::core::logs::CVLK;
@@ -89,7 +92,7 @@ fn log_callback(message:&Message) {
 
     
     let log = format!(
-        "[{}] {}{} {}",
+        "[{}] {}{}\n                       {}",
         message.layer_prefix.unwrap_or("UNKNOWN") ,
         severity,
         type_,

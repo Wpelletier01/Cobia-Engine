@@ -145,9 +145,6 @@ fn create_vlk_instance(app_name:&str,app_ver:(u32,u32,u32)) -> Result<Arc<Instan
 
     }
 
-
-
-
     if !available_ext.ext_validation_features {
 
         CWARN("ext_validation_features is not supported on this machine");
