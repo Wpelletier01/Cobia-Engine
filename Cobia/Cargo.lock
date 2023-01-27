@@ -3,13 +3,6 @@
 version = 3
 
 [[package]]
-name = "ShaderParser"
-version = "0.1.0"
-dependencies = [
- "thiserror",
-]
-
-[[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -165,7 +158,6 @@ dependencies = [
 name = "cobia"
 version = "0.1.0"
 dependencies = [
- "ShaderParser",
  "bytemuck",
  "colored",
  "error-stack",
