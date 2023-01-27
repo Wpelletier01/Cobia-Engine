@@ -13,6 +13,13 @@ use colored::{Colorize,ColoredString};
 use error_stack::{Result, ResultExt};
 //
 //
+//
+// TODO: add function to write the logs to a file
+//
+//
+// ------------------------------------------------------------------------------------------------
+// Test
+//
 #[cfg(test)]
 mod test {
 
@@ -40,9 +47,6 @@ mod test {
 
 
 }
-//
-//
-// TODO: add function to write the logs to a file  
 //
 //
 // ------------------------------------------------------------------------------------------------
@@ -80,8 +84,7 @@ const TAB_MESSAGE: &str = "\n                       "; // 23 columns of whitespa
 //
 // ------------------------------------------------------------------------------------------------
 // The log subsystem
-// 
-// TODO: create functions for disable/enable logging
+//
 //
 /// creates and sends a log messages through out the Engine
 struct LogSystem {
@@ -92,6 +95,7 @@ struct LogSystem {
     info_log:   bool,
     warn_log:   bool,
     trace_log:  bool,
+    vulkan:     bool
 
 }
 //
@@ -127,8 +131,6 @@ impl LogSystem {
     /// 
     fn push_log(&mut self,level: Level,msg: &str) { 
         //
-
-
         // check to make sure that the log subsystem is initialized
         if !self.is_init(){
             // TODO: found a better solution because the log subsystem
@@ -205,6 +207,13 @@ impl LogSystem {
     //
     /// Check if the sub system logging have been initialize
     fn is_init(&self) -> bool { self.init }
+    //
+    //
+    /// Change the status of the Info log type
+    pub(crate) fn set_info(&mut self,value:bool) { self.info_log = value; }
+    //
+    /// Change the status of the Trace log type
+    pub(crate) fn set_trace(&mut self,value:bool) { self.trace_log = value; }
     //
     //
 }
@@ -527,7 +536,7 @@ fn slice_brackets_str(msg:&str) -> (Vec<String>,usize){
 }
 //
 //
-/// validate that the string passed to the macro is a valid string with 
+/// validate that the string passed is a valid string with 
 /// valid number of arguments
 /// 
 /// # Arguments
@@ -584,14 +593,8 @@ pub fn CFATAL(msg:&str) {
 
         Ok(mut sys) => sys.push_log(Level::FATAL, msg),
 
-        Err(e) => {
-
-            //TODO: find a better solution 
-
-            eprintln!("{}",e.to_string())
-
-        }
-
+        Err(e) => eprintln!("{}",e.to_string())
+        
     }
 
 }
@@ -609,17 +612,10 @@ pub fn CFATALS(msg:&str,args:&[&str]) {
         
         },
 
-        Err(e) => {
-
-            //TODO: find a better solution 
-
-            eprintln!("{}",e.to_string())
-
-        }
-
+        Err(e) => eprintln!("{}",e.to_string())
+        
     }
-
-
+    
 }
 //
 /// Error log with no arguments
@@ -629,17 +625,10 @@ pub fn CERROR(msg:&str) {
 
         Ok(mut sys) => sys.push_log(Level::ERROR, msg),
 
-        Err(e) => {
-
-            //TODO: find a better solution 
-
-            eprintln!("{}",e.to_string())
-
-        }
+        Err(e) => eprintln!("{}",e.to_string())
+            
 
     }
-
-
 }
 //
 /// Error log with arguments
@@ -655,14 +644,8 @@ pub fn CERRORS(msg:&str,args:&[&str]) {
         
         },
 
-        Err(e) => {
-
-            //TODO: find a better solution 
-
-            eprintln!("{}",e.to_string())
-
-        }
-
+        Err(e) => eprintln!("{}",e.to_string())
+        
     }
 
 }
@@ -674,18 +657,8 @@ pub fn CWARN(msg:&str) {
 
         Ok(mut sys) => sys.push_log(Level::WARN, msg),
 
-        Err(e) => {
-
-            //TODO: find a better solution 
-
-            eprintln!("{}",e.to_string())
-
-        }
-
-    }
-
-
-
+        Err(e) => { eprintln!("{}",e.to_string()) }
+    
 }
 //
 /// Warn log with arguments
@@ -701,18 +674,10 @@ pub fn CWARNS(msg:&str,args:&[&str]) {
         
         },
 
-        Err(e) => {
-
-            //TODO: find a better solution 
-
-            eprintln!("{}",e.to_string())
-
-        }
+        Err(e) => eprintln!("{}",e.to_string())
 
     }
-
-
-
+    
 }
 //
 /// Info log with no arguments
@@ -722,19 +687,10 @@ pub fn CINFO(msg:&str) {
 
         Ok(mut sys) => sys.push_log(Level::INFO, msg),
 
-        Err(e) => {
-
-            //TODO: find a better solution 
-
-            eprintln!("{}",e.to_string())
-
-        }
-
+        Err(e) => eprintln!("{}",e.to_string())
+        
     }
-
-
-
-
+    
 }
 //
 /// Info log with arguments
@@ -750,18 +706,9 @@ pub fn CINFOS(msg:&str,args:&[&str]) {
         
         },
 
-        Err(e) => {
-
-            //TODO: find a better solution 
-
-            eprintln!("{}",e.to_string())
-
-        }
-
+        Err(e) => eprintln!("{}",e.to_string())
+        
     }
-
-
-
 }
 //
 /// Debug log with no arguments
@@ -771,14 +718,8 @@ pub fn CDEBUG(msg:&str) {
 
         Ok(mut sys) => sys.push_log(Level::DEBUG, msg),
 
-        Err(e) => {
-
-            //TODO: find a better solution 
-
-            eprintln!("{}",e.to_string())
-
-        }
-
+        Err(e) => eprintln!("{}",e.to_string())
+        
     }
 
 }
@@ -796,18 +737,10 @@ pub fn CDEBUGS(msg:&str,args:&[&str]) {
         
         },
 
-        Err(e) => {
-
-            //TODO: find a better solution 
-
-            eprintln!("{}",e.to_string())
-
-        }
+        Err(e) => eprintln!("{}",e.to_string())
 
     }
-
-
-
+    
 }
 //
 /// Trace log with no arguments
@@ -817,18 +750,10 @@ pub fn CTRACE(msg:&str) {
 
         Ok(mut sys) => sys.push_log(Level::TRACE, msg),
 
-        Err(e) => {
-
-            //TODO: find a better solution 
-
-            eprintln!("{}",e.to_string())
-
-        }
-
+        Err(e) => eprintln!("{}",e.to_string())
+        
     }
-
-
-
+    
 }
 //
 /// Trace log with arguments
@@ -844,14 +769,8 @@ pub fn CTRACES(msg:&str,args:&[&str]) {
         
         },
 
-        Err(e) => {
-
-            //TODO: find a better solution  redesign
-
-            eprintln!("{}",e.to_string())
-
-        }
-
+        Err(e) => eprintln!("{}",e.to_string())
+        
     }
 
 
@@ -865,13 +784,8 @@ pub fn CVLK(msg:&str) {
 
         Ok(mut sys) => sys.push_log(Level::VLK, msg),
 
-        Err(e) => {
-
-            //TODO: find a better solution
-
-            eprintln!("{}",e.to_string())
-
-        }
+        Err(e) =>  eprintln!("{}",e.to_string())
+        
 
     }
 

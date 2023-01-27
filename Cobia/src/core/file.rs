@@ -1,6 +1,4 @@
 
-// TODO: add comment
-
 use std::path::Path; 
 use std::fs;
 

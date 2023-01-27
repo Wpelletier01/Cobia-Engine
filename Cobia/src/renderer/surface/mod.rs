@@ -12,18 +12,20 @@ use error_stack::Result;
 use std::sync::Arc;
 use vulkano::swapchain::Surface;
 use vulkano_win::VkSurfaceBuild;
-
-
+//
 //
 //
 // ------------------------------------------------------------------------------------------------
 // Const
 //
+// Default window properties
 const DEFAULT_WIDTH:u16 = 1000;
 const DEFAULT_HEIGHT:u16 = 1000;
 const DEFAULT_TITLE: &str = "Cobia Engine";
 //
 //
+/// Store important stuff for the display. Help to link winit Window with Vulkan, get interesting
+/// event that winit captured
 pub(crate) struct CSurface {
 
     surf:       Arc<Surface>,
@@ -35,6 +37,12 @@ pub(crate) struct CSurface {
 //
 impl CSurface {
     //
+    /// Initialise the field with default value
+    ///
+    /// # Parameters
+    ///
+    /// * 'inst' - A Vulkan instance to be link to the window surface
+    ///
     pub(crate) fn new(inst: Arc<Instance>) -> Result<Self,ERendering> {
         
         let eloop = EventLoop::new();
