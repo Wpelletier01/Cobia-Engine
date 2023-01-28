@@ -53,9 +53,7 @@ impl Display for WindowEvent {
                 write!(f,"Window Fully hidden"),
             Self::PartiallyHidden =>
                 write!(f,"Window Partially hidden")
-
-
-
+            
         }
 
     }

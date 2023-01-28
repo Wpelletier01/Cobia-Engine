@@ -55,7 +55,7 @@ pub(crate) fn init_debug_utils(inst:Arc<Instance>) -> Result<DebugUtilsMessenger
     Ok(
         unsafe {
             DebugUtilsMessenger::new(inst, create_info).map_err(|e|
-                EVlkApi::DEBUG.attach_printable_default(e)
+                EVlkApi::Debug.attach_printable_default(e)
             )?
         
         }

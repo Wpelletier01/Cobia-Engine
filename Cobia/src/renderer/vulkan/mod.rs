@@ -1,7 +1,7 @@
 
 pub(crate) mod debug;
 
-use crate::core::logs::{CDEBUG, CVLK};
+use crate::core::logs::{CDEBUG, CVLK, CWARNS};
 
 use std::sync::Arc;
 
@@ -102,12 +102,11 @@ pub(crate) struct VlkBase {
     qfamily_index:      u32,
     device:             Arc<Device>,
     queues:             Vec<Arc<Queue>>,
-    images:             Vec<Arc<SwapchainImage>>,
     swapchain:          Arc<Swapchain>,
     pipeline:           Arc<GraphicsPipeline>,
     viewport:           Viewport,
-    framebuffer:        Vec<Arc<ImageView<SwapchainImage>>>,
-    cmd_buffer_alloc:   StandardCommandBufferAllocator
+    cmd_buffer_alloc:   StandardCommandBufferAllocator,
+    wrapped_imgs:       Vec<Arc<ImageView<SwapchainImage>>>,
 
 }
 //
@@ -117,37 +116,42 @@ impl VlkBase {
         //
 
         let dcallback = debug::init_debug_utils(inst.clone())
-            .map_err(|e| e.change_context(ERendering::VLK_BASE))?;
+            .map_err(|e| e.change_context(ERendering::VulkanBase))?;
 
         CVLK("Create callback for Debug message done");
 
         let (pdev,qfamilyindex) = Self::choose_pdevice(inst.clone(),surf.get_surface())
-            .change_context(ERendering::VLK_BASE)?;
+            .change_context(ERendering::VulkanBase)?;
+
+        // check if the api version is 1.3 or higher because if not, we need to enabled manually
+        // the extension for dynamics rendering
+        if pdev.api_version() < Version::V1_3 {
+
+
+
+        }
+
 
         CVLK("Choosing physical device done");
         CVLK("Choosing queue family index done");
 
         let (device,queues) = Self::create_device_and_queues(pdev.clone(), qfamilyindex)
-            .map_err(|e| e.change_context(ERendering::VLK_BASE))?;
+            .map_err(|e| e.change_context(ERendering::VulkanBase))?;
 
         CVLK("Create device done");
         CVLK("Create queue(s) done");
 
         let (sc,imgs) = Self::create_swapchain_and_image(device.clone(),surf.get_surface())
-            .map_err(|e| e.change_context(ERendering::VLK_BASE))?;
+            .map_err(|e| e.change_context(ERendering::VulkanBase))?;
 
         CVLK("Create swapchain done");
         CVLK("Create image done");
 
-        // TODO: check for other shader types
-
-
-        CVLK("Loading fragment shader done");
 
         let pipeline = Self::create_graphic_pipeline(
             sc.clone(),
             device.clone()
-        ).map_err(|e| e.change_context(ERendering::VLK_BASE))?;
+        ).map_err(|e| e.change_context(ERendering::VulkanBase))?;
 
         CVLK("Creating graphics pipeline done");
 
@@ -160,7 +164,11 @@ impl VlkBase {
 
         };
 
-        let framebuffers = window_size_dependent_setup(&imgs,&mut viewport);
+
+        // we draw to multiple image so we need to create different image view for each one
+        let attachment_image_views = window_size_dependent_setup(&imgs,&mut viewport);
+
+
 
         let cmd_buffer_alloc = StandardCommandBufferAllocator::new(
             device.clone(),
@@ -178,11 +186,10 @@ impl VlkBase {
                                 queues,
                                 device,
                 swapchain:      sc,
-                images:         imgs,
                                 pipeline,
                                 viewport,
-                framebuffer: framebuffers,
-                                cmd_buffer_alloc
+                                cmd_buffer_alloc,
+                wrapped_imgs:   attachment_image_views
 
             }
         )
@@ -195,23 +202,74 @@ impl VlkBase {
 
             Some(q) => Ok(q),
             None => Err(
-                EVlkApi::QUEUE
+                EVlkApi::Queue
                     .as_report()
                     .attach_printable("no queue could be found")
-                    .change_context(ERendering::VLK_BASE)
+                    .change_context(ERendering::VulkanBase)
             )
         }
 
     }
     //
     pub(crate) fn get_device(&self) ->      Arc<Device> { self.device.clone() }
+    //
     pub(crate) fn get_instance(&self) ->    Arc<Instance> { self.instance.clone() }
+    //
+    pub(crate) fn recreate_swapchain(&mut self,size:[u32;2]) -> Result<(),EVlkApi> {
+
+        let (new_sc,new_imgs) =
+            match self.swapchain.recreate(SwapchainCreateInfo {
+                image_extent: size,
+                ..self.swapchain.create_info()
+
+            }
+            ) {
+
+            Ok(r) => r,
+            Err(SwapchainCreationError::ImageExtentNotSupported {
+                    provided,
+                    min_supported,
+                    max_supported} ) => {
+
+                CWARNS(
+                    "New sized provided width: {} height: {} is not in the range of supported \
+                    size. width range: {} to {} height range: {} to {}",
+                    &[
+                        &provided[0].to_string(),
+                        &provided[1].to_string(),
+                        &min_supported[0].to_string(),
+                        &max_supported[0].to_string(),
+                        &min_supported[1].to_string(),
+                        &max_supported[1].to_string()
+
+                    ]);
+
+                return Ok(());
+
+            },
+            Err(e) => return Err(EVlkApi::SwapchainChange
+                .attach_printable_default(e)
+            )
+
+
+        };
+
+        self.swapchain = new_sc;
+
+        self.wrapped_imgs = window_size_dependent_setup(&new_imgs,&mut self.viewport);
+
+
+        Ok(())
+
+    }
+    //
+
+
     //
     //
     //---------------------------------------------------------------------------------------------
     // Initialisation function
     //
-
     fn choose_pdevice(
         inst:   Arc<Instance>,
         surf:   &Arc<Surface>) -> Result<(Arc<PhysicalDevice>,u32), EVlkApi> {
@@ -220,6 +278,7 @@ impl VlkBase {
         let dev_ext = DeviceExtensions {
             // TODO: add other features needed with maybe conditions
             khr_swapchain: true,
+
             ..DeviceExtensions::empty()
 
         };
@@ -274,13 +333,16 @@ impl VlkBase {
             }) {
 
             Some(val) => val,
-            None => return Err(EVlkApi::PHYSICAL_DEVICE
+            None => return Err(EVlkApi::PhysicalDevice
                 .as_report()
                 .attach_printable("No suitable physical device found")
             )
 
 
         };
+
+
+
 
         Ok((pdevice,qfamilyindex))
 
@@ -293,8 +355,7 @@ impl VlkBase {
         let dev_ext = DeviceExtensions {
             // TODO: add other features needed with maybe conditions
             khr_swapchain: true,
-            khr_dynamic_rendering:
-            pdevice.api_version() < Version::V1_3,
+            khr_dynamic_rendering: true,
             ..DeviceExtensions::default()
         };
 
@@ -326,7 +387,7 @@ impl VlkBase {
             }
 
 
-        ).map_err(|e| EVlkApi::DEVICE
+        ).map_err(|e| EVlkApi::Device
             .attach_printable_default(e)
         )?;
 
@@ -342,7 +403,7 @@ impl VlkBase {
             .physical_device()
             // TODO: check for important surface capabilities
             .surface_capabilities(surf,Default::default())
-            .map_err(|e| EVlkApi::SWAPCHAIN
+            .map_err(|e| EVlkApi::Swapchain
                 .attach_printable_default(e)
             )?;
 
@@ -351,7 +412,7 @@ impl VlkBase {
         let img_format = Some(dev
             .physical_device()
             .surface_formats(surf,Default::default())
-            .map_err(|e| EVlkApi::IMAGE
+            .map_err(|e| EVlkApi::Image
                 .attach_printable_default(e)
 
             )?[0].0
@@ -364,7 +425,7 @@ impl VlkBase {
                 match obj.downcast_ref::<Window>() {
 
                     Some(w) => w,
-                    None => return Err(EVlkApi::SURFACE
+                    None => return Err(EVlkApi::Surface
                         .as_report()
                         .attach_printable("cant downcast the surface obj \
                         parameters to winit::window::Window")
@@ -374,7 +435,7 @@ impl VlkBase {
                 }
 
             },
-            None => return Err(EVlkApi::SURFACE
+            None => return Err(EVlkApi::Surface
                 .as_report()
                 .attach_printable("cannot access object parameter of the surface")
             )
@@ -400,7 +461,7 @@ impl VlkBase {
                     .supported_composite_alpha.iter().next() {
 
                     Some(a) => a,
-                    None => return Err(EVlkApi::SWAPCHAIN
+                    None => return Err(EVlkApi::Swapchain
                         .as_report()
                         .attach_printable("The surface has no composite alpha available")
                         )
@@ -411,7 +472,7 @@ impl VlkBase {
 
             }
 
-        ).map_err(|e| EVlkApi::SWAPCHAIN.attach_printable_default(e))?;
+        ).map_err(|e| EVlkApi::Swapchain.attach_printable_default(e))?;
 
         Ok((sc,imgs))
 
@@ -436,19 +497,19 @@ impl VlkBase {
 
 
 
-        let vertex_shader = match Vs::load(dev.clone()) {
+        let vertex_shader = match vs::load(dev.clone()) {
 
             Ok(s) => s,
-            Err(e) => return Err(EVlkApi::SHADER.attach_printable_default(e))
+            Err(e) => return Err(EVlkApi::Shader.attach_printable_default(e))
 
         };
 
         CDEBUG("Vertex shader loaded");
 
-        let fragment_shader = match Fs::load(dev.clone()) {
+        let fragment_shader = match fs::load(dev.clone()) {
 
             Ok(s) => s,
-            Err(e) => return Err(EVlkApi::SHADER.attach_printable_default(e))
+            Err(e) => return Err(EVlkApi::Shader.attach_printable_default(e))
 
         };
 
@@ -462,7 +523,7 @@ impl VlkBase {
 
                 Some(entry) => entry,
                 None => return Err(
-                    EVlkApi::SHADER
+                    EVlkApi::Shader
                         .as_report()
                         .attach_printable("Vertex shader have no entry function name \
                         'main'")
@@ -476,7 +537,7 @@ impl VlkBase {
 
                 Some(entry) => entry,
                 None => return Err(
-                    EVlkApi::SHADER
+                    EVlkApi::Shader
                         .as_report()
                         .attach_printable("Fragment shader have no entry function name \
                                           'main'")
@@ -484,7 +545,7 @@ impl VlkBase {
                 }, ()
             )
             .build(dev)
-            .map_err(|e| EVlkApi::GRAPHIC_PIPELINE.attach_printable_default(e))?;
+            .map_err(|e| EVlkApi::GraphicPipeline.attach_printable_default(e))?;
 
         Ok(pipeline)
 
@@ -494,7 +555,7 @@ impl VlkBase {
 }
 //
 //
-mod Vs {
+mod vs {
     vulkano_shaders::shader! {
 
         ty: "vertex",
@@ -505,7 +566,7 @@ mod Vs {
 }
 //
 //
-mod Fs {
+mod fs {
 
     vulkano_shaders::shader! {
 

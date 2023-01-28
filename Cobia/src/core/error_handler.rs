@@ -101,10 +101,9 @@ mod tests {
 #[allow(non_camel_case_types)]
 #[derive(Debug,Clone, Copy)]
 pub(crate) enum EGeneral  {
-    
-    CONVERSION,
-    MUTEX_ACCESS,
-    C_STRING_PARSING, 
+    Conversion,
+    MutexAccess,
+    CStringParsing,
 
 }
 //
@@ -126,9 +125,9 @@ impl fmt::Display for EGeneral {
 
         match self {
             
-            Self::CONVERSION =>     write!(f,       "Conversion Error"),
-            Self::MUTEX_ACCESS =>   write!(f,       "MutexAccess Error"),
-            Self::C_STRING_PARSING =>   write!(f,   "C_STRING_PARSING Error")
+            Self::Conversion =>     write!(f, "Conversion Error"),
+            Self::MutexAccess =>   write!(f, "MutexAccess Error"),
+            Self::CStringParsing =>   write!(f,"C_STRING_PARSING Error")
         }
 
 
@@ -148,9 +147,8 @@ impl Context for EGeneral {}
 #[derive(Debug)]
 pub enum ECore {
 
-    LOGGING,
-    FILE,
-
+    Logging,
+    File,
 
 }
 //
@@ -161,8 +159,8 @@ impl fmt::Display for ECore {
         match self {
 
 
-            Self::LOGGING => write!(f, "Logging Module Error:"),
-            Self::FILE => write!(f, "Load File Module Error:"),
+            Self::Logging => write!(f, "Logging Module Error:"),
+            Self::File => write!(f, "Load File Module Error:"),
            
 
         }
@@ -178,10 +176,9 @@ impl Context for ECore {}
 // 
 #[derive(Debug,Clone, Copy)]
 pub enum EFile {
-
-    EXTENSION,
-    CONTENT,
-    PATH
+    Extension,
+    Content,
+    Path
     
 }
 //
@@ -196,9 +193,9 @@ impl fmt::Display for EFile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
 
-            Self::EXTENSION =>  write!(f, "Extension Error"),
-            Self::CONTENT =>    write!(f, "Content Error"),
-            Self::PATH =>       write!(f, "Path error")
+            Self::Extension =>  write!(f, "Extension Error"),
+            Self::Content =>    write!(f, "Content Error"),
+            Self::Path =>       write!(f, "Path error")
 
         }
     }
@@ -214,10 +211,10 @@ impl Context for EFile {}
 //
 #[derive(Debug,Clone, Copy)]
 pub enum ERendering {
-
-    VLK_BASE,
-    SURFACE,
-    SYSTEM
+    VulkanBase,
+    Surface,
+    System,
+    GpuRessources
 }
 //
 impl ERendering {
@@ -234,12 +231,13 @@ impl fmt::Display for ERendering {
 
         match self {
 
-            Self::VLK_BASE => write!(f,"Vulkan Rendering System"),
-            Self::SURFACE =>  write!(f,"Window surface"),
-            Self::SYSTEM =>   write!(f,"Rendering System")
+            Self::VulkanBase => write!(f, "Vulkan Rendering System"),
+            Self::Surface =>  write!(f, "Window surface"),
+            Self::System =>   write!(f, "Rendering System"),
+            Self::GpuRessources => write!(f,"Free gpu resources")
             
         }
-
+    
     }
 
 }
@@ -254,23 +252,21 @@ impl Context for ERendering {}
 #[allow(non_camel_case_types)]
 #[derive(Debug,Clone, Copy)]
 pub enum EVlkApi {
-
-    LIBRARY,
-    INSTANCE,
-    DEBUG,
-    PHYSICAL_DEVICE,
-    DEVICE,
-    SURFACE,
-    SWAPCHAIN,
-    GRAPHIC_PIPELINE,
-    RENDERPASS,
-    FRAMEBUFFER,
-    QUEUE,
-    IMAGE,
-    SHADER,
-    MEMORY
-
-
+    Library,
+    Instance,
+    Debug,
+    PhysicalDevice,
+    Device,
+    Surface,
+    Swapchain,
+    SwapchainChange,
+    GraphicPipeline,
+    RenderPass,
+    FrameBuffer,
+    Queue,
+    Image,
+    Shader,
+    Memory
 }
 //
 impl EVlkApi {
@@ -291,20 +287,21 @@ impl fmt::Display for EVlkApi {
         
         match self {
 
-            Self::LIBRARY => write!(f,"Api Entry Point Error:"),
-            Self::INSTANCE => write!(f, "Instance Error:"),
-            Self::DEBUG => write!(f, "Debug utils Error:"),
-            Self::PHYSICAL_DEVICE => write!(f, "Physical Devices Error:"),
-            Self::DEVICE => write!(f, "Devices Error:"),
-            Self::SURFACE => write!(f, "Vulkan Surface Error:"),
-            Self::SWAPCHAIN => write!(f, "Swapchain Error:"),
-            Self::GRAPHIC_PIPELINE => write!(f, "Graphics Pipeline Error:"),
-            Self::SHADER => write!(f, "Shader Module Error:"),
-            Self::RENDERPASS => write!(f, "Renderpass Error:"),
-            Self::FRAMEBUFFER => write!(f,"FrameBuffer Error:"),
-            Self::QUEUE => write!(f,"Queue Error:"),
-            Self::MEMORY => write!(f,"Memory Error:"),
-            Self::IMAGE => write!(f,"Image Error:")
+            Self::Library => write!(f, "Api Entry Point Error:"),
+            Self::Instance => write!(f, "Instance Error:"),
+            Self::Debug => write!(f, "Debug utils Error:"),
+            Self::PhysicalDevice => write!(f, "Physical Devices Error:"),
+            Self::Device => write!(f, "Devices Error:"),
+            Self::Surface => write!(f, "Vulkan Surface Error:"),
+            Self::Swapchain => write!(f, "Swapchain Error:"),
+            Self::GraphicPipeline => write!(f, "Graphics Pipeline Error:"),
+            Self::Shader => write!(f, "Shader Module Error:"),
+            Self::RenderPass => write!(f, "Renderpass Error:"),
+            Self::FrameBuffer => write!(f, "FrameBuffer Error:"),
+            Self::Queue => write!(f, "Queue Error:"),
+            Self::Memory => write!(f, "Memory Error:"),
+            Self::Image => write!(f, "Image Error:"),
+            Self::SwapchainChange => write!(f,"Swapchain change Error:")
             
         }
     

@@ -37,23 +37,21 @@ use crate::define::ENGINE_VERSION;
 //
 pub(crate) struct RenderingSys {
 
-    vlk_sys: VlkBase,
-    surface: CSurface,
-    recreate_sc: bool,
-    previous_frame_end: Option<Box<dyn GpuFuture>>
+    vlk_sys:            VlkBase,
+    surface:            CSurface,
+    previous_frame_end: Option<Box<dyn GpuFuture>>,
+    recreate_swapchain: bool,
+    redraw_clear:       bool
 
 }
 //
 impl RenderingSys {
 
-    pub fn new(
-        app_names:  &str,
-        app_ver:    (u32,u32,u32),
-    ) -> Result<Self,ERendering> {
+    pub fn new(app_names:&str, app_ver:(u32,u32,u32), ) -> Result<Self,ERendering> {
         //
         let instance = create_vlk_instance(app_names,app_ver)
             .map_err(|e| e
-                .change_context(ERendering::SYSTEM)
+                .change_context(ERendering::System)
                 .attach_printable("Initialisation failed")
 
             )?;
@@ -64,40 +62,39 @@ impl RenderingSys {
 
         let csurf = CSurface::new(instance.clone()).map_err( |e|
             e
-                .change_context(ERendering::SYSTEM)
+                .change_context(ERendering::System)
                 .attach_printable("Initialisation failed")
             )?;
 
-        CINFO("Successfully create Csurface struct");
+        CINFO("Successfully create CSurface struct");
 
         CTRACE("Start Vulkan base component creations");
 
         let vbase = VlkBase::init(
             &csurf,
             instance).map_err(|e| e
-                .change_context(ERendering::SYSTEM)
+                .change_context(ERendering::System)
                 .attach_printable("Initialisation failed")
             )?;
 
         CINFO("Vulkan base initialisation done");
 
-        let recreate_sc = false;
+
         let previous_frame_end = Some(sync::now(vbase.get_device()).boxed());
 
         Ok(
             RenderingSys {
 
-                vlk_sys:        vbase,
-                surface:        csurf,
-                                recreate_sc,
-                                previous_frame_end
+                vlk_sys:            vbase,
+                surface:            csurf,
+                                    previous_frame_end,
+                redraw_clear:       false,
+                recreate_swapchain: false
 
             }
         )
 
     }
-    //
-    pub(crate) fn need_to_recreate_swapchain(&self) -> bool { self.recreate_sc }
     //
     pub(crate) fn set_window_title(&mut self, title:&str) -> Result<(),ERendering> {
 
@@ -111,6 +108,31 @@ impl RenderingSys {
         Ok(())
     }
     //
+    pub(crate) fn set_recreate_swapchain(&mut self,value:bool) { self.redraw_clear = value; }
+    //
+    pub(crate) fn should_recreate_swapchain(&self) -> bool { self.recreate_swapchain }
+    //
+    pub(crate) fn recreate_swapchain(&mut self) {
+
+        self.vlk_sys.recreate_swapchain(self.surface.get_win_size());
+
+        self.recreate_swapchain = false;
+
+    }
+    //
+    pub(crate) fn free_gpu_resource(&mut self) {
+
+        match self.previous_frame_end.as_mut() {
+
+            Some(pfe) => pfe.cleanup_finished(),
+
+            None =>  CWARN("could not access previous frame submission as a Mutable")
+
+        };
+
+
+    }
+    //
 }
 //
 //
@@ -118,7 +140,7 @@ fn create_vlk_instance(app_name:&str,app_ver:(u32,u32,u32)) -> Result<Arc<Instan
 
 
     let lib = VulkanLibrary::new().map_err(|e|
-        EVlkApi::LIBRARY
+        EVlkApi::Library
             .attach_printable_default(e)
     )?;
 
@@ -132,7 +154,7 @@ fn create_vlk_instance(app_name:&str,app_ver:(u32,u32,u32)) -> Result<Arc<Instan
     if !available_ext.ext_debug_utils {
 
         CFATAL("ext_debug_utils is unsupported on this machine");
-        return Err(EVlkApi::INSTANCE
+        return Err(EVlkApi::Instance
             .as_report()
             .attach_printable("ext_validation_features unsupported")
         );
@@ -199,7 +221,7 @@ fn create_vlk_instance(app_name:&str,app_ver:(u32,u32,u32)) -> Result<Arc<Instan
     };
 
     let inst = Instance::new(lib,inst_info).map_err(|e|
-        EVlkApi::INSTANCE
+        EVlkApi::Instance
             .attach_printable_default(e)
     )?;
 
@@ -215,9 +237,5 @@ fn validate_available_extension(available_ext:InstanceExtensions) {
         CWARN("debug_utils extension is not supported on this machine")
 
     }
-
-
-
-
 
 }

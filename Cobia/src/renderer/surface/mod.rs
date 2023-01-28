@@ -59,7 +59,7 @@ impl CSurface {
 
         let win =  winit_win
             .build_vk_surface(&eloop,inst)
-            .map_err(|e|ERendering::SURFACE
+            .map_err(|e|ERendering::Surface
                 .as_report()
                 .attach_printable(format!("{}",e))
             )?;
@@ -84,7 +84,7 @@ impl CSurface {
 
         self.surf = win_builder
             .build_vk_surface(&self.eloop,instance)
-            .map_err(|e|ERendering::SURFACE
+            .map_err(|e|ERendering::Surface
                 .as_report()
                 .attach_printable(format!("{}",e))
             )?;
@@ -123,5 +123,7 @@ impl CSurface {
 
         Ok(())
     }
-
+    //
+    pub(crate) fn get_win_size(&self) -> [u32;2] { [self.width as u32,self.height as u32] }
+    //
 }

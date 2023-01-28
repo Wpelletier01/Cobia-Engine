@@ -2,6 +2,7 @@
 
 pub mod types;
 
+
 use types::CEvent;
 use types::input::*;
 use types::window::{WindowEvent,ResolutionChangeEvent};
@@ -31,12 +32,23 @@ pub(crate) struct EventSystem {
 
     queue:                  EventQueue,
     modifier_state:         ModifierStateKeeper,
-    call_to_close_app:      bool,
 
 }
 //
 impl EventSystem {
+    //
+    pub(crate) fn new() -> Self {
+        // TODO: add to be able to change the queue buffer size
 
+        Self {
+            queue: EventQueue::init(None),
+            modifier_state: ModifierStateKeeper::init()
+
+        }
+
+
+    }
+    //
     pub(crate) fn run_return(&mut self, event:WEvent<()>,mut ctrl_flow: ControlFlow) {
 
         ctrl_flow.set_wait();
@@ -63,29 +75,17 @@ impl EventSystem {
 
     }
     //
-    fn check_last_event(&mut self) {
+    pub(crate) fn get_last_event(&self) -> &CEvent {
 
-        match self.queue.get_last_event() {
+        match self.queue.queue.last() {
 
-            CEvent::Window(event) => {
-                match event {
-
-                    WindowEvent::Close => self.call_to_close_app = true,
-
-
-                    _ => {}
-
-                }
-
-            },
-
-            _ => {}
-
+            Some(cevent) => cevent,
+            None =>     &CEvent::Any
 
         }
 
     }
-    
+    //
 }
 //
 //
@@ -128,17 +128,6 @@ impl EventQueue {
 
     }
     //
-    pub(crate) fn get_last_event(&self) -> &CEvent {
-
-        match self.queue.last() {
-
-            Some(cevent) => cevent,
-            None =>     &CEvent::Any
-
-        }
-
-    }
-
 }
 //
 //

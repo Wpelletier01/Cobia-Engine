@@ -61,7 +61,8 @@ lazy_static::lazy_static! {
             debug_log:  true,
             info_log:   true,
             warn_log:   true, 
-            trace_log:  true 
+            trace_log:  true,
+            vulkan:     true
         }
     );
     //
@@ -222,7 +223,7 @@ impl Drop for LogSystem {
 
     fn drop(&mut self) {
         
-        let mutx = get_access_mutex().change_context(ECore::LOGGING)
+        let mutx = get_access_mutex().change_context(ECore::Logging)
             .attach_printable("Cant drop the log system mutex")
             .unwrap();
         
@@ -237,7 +238,7 @@ impl Drop for LogSystem {
 pub fn init() -> Result<(),ECore> {
     //
 
-    get_access_mutex().change_context(ECore::LOGGING)
+    get_access_mutex().change_context(ECore::Logging)
         .attach_printable("Can't initialize the Log System")?
         .initialize();
 
@@ -253,7 +254,7 @@ fn get_access_mutex() -> Result<MutexGuard<'static,LogSystem>,EGeneral> {
 
         Ok(sys) => Ok(sys),
         Err(e) => return Err(
-                EGeneral::MUTEX_ACCESS
+                EGeneral::MutexAccess
                     .as_report()
                     .attach_printable(
                         format!(
@@ -659,6 +660,7 @@ pub fn CWARN(msg:&str) {
 
         Err(e) => { eprintln!("{}",e.to_string()) }
     
+    }
 }
 //
 /// Warn log with arguments
@@ -744,7 +746,7 @@ pub fn CDEBUGS(msg:&str,args:&[&str]) {
 }
 //
 /// Trace log with no arguments
-pub fn CTRACE(msg:&str) { 
+pub fn CTRACE(msg:&str) {
 
     match get_access_mutex() {
 
@@ -773,22 +775,15 @@ pub fn CTRACES(msg:&str,args:&[&str]) {
         
     }
 
-
-
 }
 //
 /// Vulkan internal debug
 pub fn CVLK(msg:&str) {
 
     match get_access_mutex() {
-
         Ok(mut sys) => sys.push_log(Level::VLK, msg),
 
-        Err(e) =>  eprintln!("{}",e.to_string())
-        
-
+        Err(e) => eprintln!("{}", e.to_string())
     }
-
-
 
 }

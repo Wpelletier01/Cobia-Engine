@@ -9,7 +9,7 @@ use input::{KeyboardEvent,TextInputEvent,MouseEvent,ModifierChangeEvent};
 use std::fmt::{Debug, Display, Formatter, Result, write};
 
 
-pub(crate) enum CEvent {
+pub enum CEvent {
     
     Any,
     Ignored,

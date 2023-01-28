@@ -26,7 +26,7 @@ fn is_a_correct_path(path: &str) -> Result<(),EFile> {
 
                 if p.is_symlink()  {
                     return Err( 
-                        EFile::PATH
+                        EFile::Path
                             .as_report()
                             .attach_printable(format!(
                                 "The path {} is a broken symbolic link",
@@ -37,7 +37,7 @@ fn is_a_correct_path(path: &str) -> Result<(),EFile> {
                 }
 
                 return Err( 
-                    EFile::PATH
+                    EFile::Path
                         .as_report()
                         .attach_printable(format!(
                             "{} does not exist",
@@ -53,7 +53,7 @@ fn is_a_correct_path(path: &str) -> Result<(),EFile> {
         },
 
         Err(e) => return Err(
-            EFile::PATH
+            EFile::Path
                .as_report()
                .attach_printable(format!(
                     "{}",
@@ -79,7 +79,7 @@ pub(crate) fn get_file_extension(fp:&str) -> Result<&str,EFile> {
     //
     // Check first if the path passed is valid
     is_a_correct_path(fp)
-        .change_context(EFile::EXTENSION)
+        .change_context(EFile::Extension)
         .attach_printable("Can't find file extension")?;
 
     let p = Path::new(fp);
@@ -92,10 +92,10 @@ pub(crate) fn get_file_extension(fp:&str) -> Result<&str,EFile> {
             match _ext.to_str() {
                 Some(ex) => Ok(ex),
                 None => return Err(
-                    EGeneral::CONVERSION
+                    EGeneral::Conversion
                     .as_report()
                     .attach_printable("Couldn't convert OsStr to str")
-                    .change_context(EFile::EXTENSION)
+                    .change_context(EFile::Extension)
                     .attach("Can't find file extension")
                     ),
 
@@ -104,7 +104,7 @@ pub(crate) fn get_file_extension(fp:&str) -> Result<&str,EFile> {
         //
         // weird rare case
         None => return Err(
-            EFile::EXTENSION
+            EFile::Extension
                .as_report()
                .attach_printable(format!(
                     "
@@ -133,7 +133,7 @@ pub(crate) fn get_file_content(fp:&str) -> Result<Vec<u8>,EFile> {
     //
     // check first that the file path passed is valid
     is_a_correct_path(fp)
-        .change_context(EFile::CONTENT)
+        .change_context(EFile::Content)
         .attach_printable("Can't get file content")?;
 
     match fs::read(fp) {
@@ -142,7 +142,7 @@ pub(crate) fn get_file_content(fp:&str) -> Result<Vec<u8>,EFile> {
 
         Err(e) => return Err(
             
-            EFile::CONTENT
+            EFile::Content
                .as_report()
                .attach_printable(format!(
                     "cant access file {} content because of {}",
